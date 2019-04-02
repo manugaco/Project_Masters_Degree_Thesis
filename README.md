@@ -1,4 +1,4 @@
-# SmallAreaEstimation
+# Small Area Estimation
 
 
-This is the repository which contains the code and simulations of the final thesis of my master degree
+This repository contains the code and simulations of the final thesis of my master degree
