@@ -289,15 +289,13 @@ plot(fitted,res,xlab="Fitted values",ylab="Residuals")
 ##### Step 7 REPEAT steps 2-6 and compute MSE
 
 #S <- 1000
-#for(i in 1:S){}
+#for(i in 1:S){
 
 ##### Step 2 GENERATE CENSUS Y_p and compute true values of Y_hat and F_o
 
 #Declare variables
 Y <- numeric()
-y_ms <- numeric()
-f_ms <- numeric()
-y_hat <- numeric()
+y_bar <- numeric()
 f_0 <- numeric()
 
 for(i in 1:D){
@@ -313,18 +311,18 @@ for(i in 1:D){
   y_d <- mean_d + v_d + e_d #compute simulated response on a given area
   Y[municipio == d] <- y_d #store of the simulation results for each area
   
-  y_hat[i] <- sum(y_d)/nrow(Xd) #compute mean of the response for each area
-  f_0[i] <- sum(exp(y_d) < z)/nrow(Xd) # compute the poverty rate
+  y_bar[i] <- sum(y_d)/nrow(Xd) #compute mean of the response for each area
+  f_0[i] <- sum(exp(y_d) < z)/nrow(Xd) #compute the poverty rate
   
 }
 
 summary(Y)
-
+y_bar
+f_0
 
 ##### Step 3 SRSWOR municipalities
 
 #Declare variables
-s_d <- numeric()
 
 dat_in <- data.frame(ys, municipio, age2, age2_2, age2_3, ben_gob, bienes_casa3, clase_hogar, calidad_vivienda, 
                      escuela3, genero, pob_indigena, remesas_f, rur_urb, sector_actividad)
@@ -351,7 +349,7 @@ for(i in 1:D){
 
 #---------------
 
-# Less Biased model without non-significat interaction
+# Less Biased model without the non-significat interaction
 
 mod_1 <- lmer(ys ~ (1 | municipio) +
           age2 +
@@ -428,6 +426,29 @@ mod_5 <- lmer(data = dat_out, ys ~ (1| municipio) +
 
 ##### Step 5 GOODNESS OF FIT MEASURES
 
+names <- c("mod_1", "mod_2", "mod_3", "mod_4", "mod_5")
+
+nummod <- 5
+k <- numeric()
+for(i in 1:nummod){
+  assign(mod, get(paste("mod_", i, sep = ""))) #goodness of fit for each model
+  for(i in 1:D){
+    d <- muns_uni[i]
+    
+    #Define parameters for each model and are
+    Xs <- model.matrix(paste(mod, i, sep = "_")) #Estimates Xp for each model and area
+    Xd <- Xs[datosMCSom$mun==d,]
+    p <- dim(Xd)[2] #dimensions of each model
+    betaest <- fixed.effects(mod) #beta estimates for each model
+    upred <- random.effects(mod)   #EBLUP for each model
+    sigmae2est <- summary(mod)$sigma^2 #error estimates for each model
+    sigmau2est <- sqrt(as.numeric(VarCorr(mod))) #random effects estimates for each model
+    gammadi <- sigmau2est/(sigmau2est+sigmae2est/nd[i])
+    k[i] <- sigmae2est/sigmau2est
+  }
+}
+
+loss_f <- 
 
 
 
@@ -435,9 +456,6 @@ mod_5 <- lmer(data = dat_out, ys ~ (1| municipio) +
 
 
 
-
-
-
-
+#}
 
 
