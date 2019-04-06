@@ -196,7 +196,7 @@ z <- 0.6*median(ictpc) #This is measurement used more in Europe
 
 # Transform the income variable
 
-k <- 170 #Asymetri constant
+k <- 170 #Asymetric constant
 m <- abs(min(ictpc)) + k
 ictpct <- ictpc + m
 
@@ -302,19 +302,19 @@ f_0 <- numeric()
 
 for(i in 1:D){
   
-  print(paste("Municipality", i, sep = " "))
+  print(paste("Municipality", i, sep = " ")) #indicate step
   d <- muns_uni[i]
   
-  Xd <- Xs[datosMCSom$mun==d,]
-  mean_d <- as.matrix(Xd)%*%matrix(betaest,nr=p,nc=1)
-  e_d <- rnorm(nd[i], 0, sqrt(sigmae2est))
-  v_d <- rnorm(1, 0, sqrt(sigmau2est))
+  Xd <- Xs[datosMCSom$mun==d,] #subset predictors for each municipality
+  mean_d <- as.matrix(Xd)%*%matrix(betaest,nr=p,nc=1) #compute the mean matrix
+  e_d <- rnorm(nd[i], 0, sqrt(sigmae2est)) #Sample error
+  v_d <- rnorm(1, 0, sqrt(sigmau2est)) #Sample random effects
   
-  y_d <- mean_d + v_d + e_d
-  Y[municipio == d] <- y_d
+  y_d <- mean_d + v_d + e_d #compute simulated response on a given area
+  Y[municipio == d] <- y_d #store of the simulation results for each area
   
-  y_hat[i] <- sum(y_d)/nrow(Xd)
-  f_0[i] <- sum(exp(y_d) < z)/nrow(Xd)
+  y_hat[i] <- sum(y_d)/nrow(Xd) #compute mean of the response for each area
+  f_0[i] <- sum(exp(y_d) < z)/nrow(Xd) # compute the poverty rate
   
 }
 
@@ -332,11 +332,12 @@ dat_in <- data.frame(ys, municipio, age2, age2_2, age2_3, ben_gob, bienes_casa3,
 for(i in 1:D){
   
   d <- muns_uni[i] #index of municipality
-  dat_mun <- dat_in[dat_in$municipio==d,]
-  colnames(dat_mun)[2] <- "municipio"
-  mun <- length(which(datosMCSom$mun == d)) #number of individuals per municipality
-  dat_s <- dat_mun[sample(nrow(dat_mun), sample(1:mun, 1), replace = F),] #Sample of individuals
+  dat_mun <- dat_in[dat_in$municipio==d,] #subset each municipality
+  colnames(dat_mun)[2] <- "municipio" #Rename column
+  mun <- length(which(datosMCSom$mun == d)) #Number of individuals per municipality
+  dat_s <- dat_mun[sample(nrow(dat_mun), sample(1:mun, 1), replace = F),] #Sample of individuals on each municipality
   
+  #Creating a new dataframe with the sample (used for fit new models)
   if(i == 1){
   dat_out <- dat_s
   }else{
