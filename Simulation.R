@@ -365,7 +365,7 @@ mod_1 <- lmer(ys ~ (1 | municipio) +
           sector_actividad +
           clase_hogar*genero, data = dat_out, REML=T)
 
-#Define some models
+#Define some models adding or deleting variables
   
 #Remove calidad_vivienda
 mod_2 <- lmer(data = dat_out, ys ~ (1 | municipio) +
