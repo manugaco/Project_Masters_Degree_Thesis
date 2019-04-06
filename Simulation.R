@@ -289,7 +289,13 @@ plot(fitted,res,xlab="Fitted values",ylab="Residuals")
 ##### Step 7 REPEAT steps 2-6 and compute MSE
 
 #S <- 1000
-#for(i in 1:S){
+#sims_Y <- list()
+#sims_y_bar <- list()
+#sims_f_0 <- list()
+#sims_dat_out <- list()
+#sims_mods <- list()
+
+#for(k in 1:S){
 
 ##### Step 2 GENERATE CENSUS Y_p and compute true values of Y_hat and F_o
 
@@ -298,6 +304,7 @@ Y <- numeric()
 y_bar <- numeric()
 f_0 <- numeric()
 
+#Loop for generate the census
 for(i in 1:D){
   
   print(paste("Municipality", i, sep = " ")) #indicate step
@@ -316,6 +323,11 @@ for(i in 1:D){
   
 }
 
+#Store on each iteration
+#sims_Y[k] <- Y
+#sims_y_bar[k] <- y_bar
+#sims_f_o[k] <- f_0
+
 summary(Y)
 y_bar
 f_0
@@ -327,6 +339,7 @@ f_0
 dat_in <- data.frame(ys, municipio, age2, age2_2, age2_3, ben_gob, bienes_casa3, clase_hogar, calidad_vivienda, 
                      escuela3, genero, pob_indigena, remesas_f, rur_urb, sector_actividad)
 
+#Loop for create the sampled data
 for(i in 1:D){
   
   d <- muns_uni[i] #index of municipality
@@ -343,6 +356,9 @@ for(i in 1:D){
   }
   
 }
+
+#Store on each iteration
+#sims_dat_out[k] <- dat_out
 
 ##### Step 4 FIT MODELS TO SAMPLE Y
 
@@ -421,21 +437,24 @@ mod_5 <- lmer(data = dat_out, ys ~ (1| municipio) +
                 calidad_vivienda*rur_urb +
                 clase_hogar*genero, REML=T)
 
+#Store each model, each iteration
+#sims_mods[k] <- c(mod_1, mod_2, mod_3, mod_4, mod_5)
 
 #---------------
 
 ##### Step 5 GOODNESS OF FIT MEASURES
 
-names <- c("mod_1", "mod_2", "mod_3", "mod_4", "mod_5")
-
-nummod <- 5
+#Define variables
 k <- numeric()
+nummod <- 5
+
 for(i in 1:nummod){
   assign(mod, get(paste("mod_", i, sep = ""))) #goodness of fit for each model
+  
   for(i in 1:D){
     d <- muns_uni[i]
-    
-    #Define parameters for each model and are
+
+    #Define parameters of each model and area
     Xs <- model.matrix(paste(mod, i, sep = "_")) #Estimates Xp for each model and area
     Xd <- Xs[datosMCSom$mun==d,]
     p <- dim(Xd)[2] #dimensions of each model
@@ -444,18 +463,17 @@ for(i in 1:nummod){
     sigmae2est <- summary(mod)$sigma^2 #error estimates for each model
     sigmau2est <- sqrt(as.numeric(VarCorr(mod))) #random effects estimates for each model
     gammadi <- sigmau2est/(sigmau2est+sigmae2est/nd[i])
-    k[i] <- sigmae2est/sigmau2est
+    k <- sigmae2est/sigmau2est
+    
+    
+    
   }
 }
 
-loss_f <- 
 
 
 
 
-
-
-
-#}
+#} #End of simulation
 
 
