@@ -11,13 +11,6 @@
 rm(list=ls())
 
 
-##### Load data and define objects
-
-
-datosMCS <- read_csv("Data/datosMCSom.csv", col_names = T)
-datosCenso <-  read_csv("Data/datosCensoom.csv", col_names = T)
-
-
 ##### Libraries
 
 library(nlme)
@@ -25,6 +18,15 @@ library(lme4)
 library(MASS)
 library(sae)
 library(readr)
+
+
+##### Load data and define objects
+
+setwd("/Users/manugaco/Desktop/Thesis")
+
+datosMCS <- read_csv("Data/datosMCSom.csv", col_names = T)
+datosCenso <-  read_csv("Data/datosCensoom.csv", col_names = T)
+
 
 ##### Check outliers and NAs
 
