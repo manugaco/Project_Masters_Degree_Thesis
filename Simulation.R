@@ -215,7 +215,7 @@ age2 <- age
 age2_2 <- age2^2
 age2_3 <- age2^3
 
-fit <- lmer(ys~(1|as.factor(municipio)) +
+fit <- lmer(ys ~ (1|as.factor(municipio)) +
            age2 +
            age2_2 +
            age2_3 +
@@ -446,30 +446,38 @@ mod_5 <- lmer(data = dat_out, ys ~ (1| municipio) +
 
 #Define variables
 k <- numeric()
+Q <- numeric()
 nummod <- 5
 
-for(i in 1:nummod){
-  assign(mod, get(paste("mod_", i, sep = ""))) #goodness of fit for each model
-  
-  for(i in 1:D){
-    d <- muns_uni[i]
 
+for(i in 1:nummod){
+  assign(mod, get(paste("mod_", i, sep = "")))
+  
+  for(j in 1:D){
+    #Select municipality
+    d <- muns_uni[j]
     #Define parameters of each model and area
-    Xs <- model.matrix(paste(mod, i, sep = "_")) #Estimates Xp for each model and area
-    Xd <- Xs[datosMCSom$mun==d,]
+    Xs <- model.matrix(paste(mod, i, sep = "_")) #Estimates Xp for each model
+    Xd <- Xs[datosMCSom$mun==d,] #subset Xd for each municipaliti
     p <- dim(Xd)[2] #dimensions of each model
     betaest <- fixed.effects(mod) #beta estimates for each model
     upred <- random.effects(mod)   #EBLUP for each model
     sigmae2est <- summary(mod)$sigma^2 #error estimates for each model
     sigmau2est <- sqrt(as.numeric(VarCorr(mod))) #random effects estimates for each model
-    gammadi <- sigmau2est/(sigmau2est+sigmae2est/nd[i])
+    gammad <- sigmau2est/(sigmau2est+sigmae2est/nd[j])
     k <- sigmae2est/sigmau2est
-    
-    
-    
+    #compute gof 1 (propsed loss function)
   }
+  Q[i] <- 
 }
 
+
+m <- matrix(1:20, 4)
+sigma <- 1:ncol(m)
+omega <- 1:nrow(m)
+mu <- 2
+
+sum(((m - mu) / outer(omega, sigma))^2)
 
 
 
