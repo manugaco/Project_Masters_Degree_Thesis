@@ -25,7 +25,7 @@ library(readr)
 setwd("/Users/manugaco/Desktop/Thesis")
 
 datosMCS <- read_csv("Data/datosMCSom.csv", col_names = T)
-datosCenso <-  read_csv("Data/datosCensoom.csv", col_names = T)
+#datosCenso <-  read_csv("Data/datosCensoom.csv", col_names = T)
 
 
 ##### Check outliers and NAs
@@ -34,7 +34,7 @@ datosCenso <-  read_csv("Data/datosCensoom.csv", col_names = T)
 # We remove data from municipality number 8 (outlying municipality) #Because after adjusting the model, it was outlier
 
 datosMCSom<-datosMCS[datosMCS$mun!=8,]
-datosCensoom<-datosCenso[datosCenso$mun!=8,]
+#datosCensoom<-datosCenso[datosCenso$mun!=8,]
 
 attach(datosMCSom) #name columns
 municipio <- (datosMCSom$mun) #create vector
@@ -47,7 +47,7 @@ n <- dim(datosMCSom)[1];n
 
 N <- sum(datosCensoom$factor);N #estimate with w_i factor weights Horbit_Thomsom estimator
 
-N/dim(datosCensoom)[1]
+#N/dim(datosCensoom)[1]
 # The available Census is a sample of 1 out of 20 on average, promedio del factor de elevacion del censo
 
 
@@ -58,14 +58,14 @@ D <- length(muns_uni)
 
 nd<-rep(0,D)  #sample size
 Nd<-rep(0,D)  #population size
-ndc<-rep(0,D)  #census size
+#ndc<-rep(0,D)  #census size
 
 for (i in 1:D){
   
   d <- muns_uni[i]
   nd[i] <- sum(datosMCSom$mun==d)
   Nd[i] <- round(sum(datosCensoom$factor[datosCensoom$mun==d]))
-  ndc[i] <- sum(datosCensoom$mun==d)
+  #ndc[i] <- sum(datosCensoom$mun==d)
   
 }
 
@@ -124,59 +124,6 @@ escuela3 <- factor(escuela,labels=c("1","2","3","4"))
 
 rur_urb2 <- datosMCSom$rururb
 rur_urb <- factor(rur_urb2,labels=c("urb","rur"))
-
-###### Now for the Census
-
-genero2c <- datosCensoom$sexo
-generoc <- factor(genero2c,labels=c("mujer", "hombre")) #Declara factor con etiquetas
-
-pob_indigena2c<-datosCensoom$pob_ind
-pob_indigenac<-factor(pob_indigena2c,labels=c("No","Si"))
-
-sector_actividad2c<-datosCensoom$sector_act
-sector_actividadc<-factor(sector_actividad2c,labels=c("1","2","3","4","5","6"))
-
-# years_study<-datosMCSom.u2$a?os_escolaridad
-
-age2c<-datosCensoom$edad
-agec<-age2c
-
-clase_hogar2c<-datosCensoom$clase_hog
-clase_hogarc<-clase_hogar2c
-clase_hogarc[clase_hogar2c>3]<-3
-clase_hogarc<-factor(clase_hogarc,labels=c("1","2","3"))
-
-calidad_vivienda2c<-datosCensoom$est_calidad_vivienda
-calidad_viviendac<-factor(calidad_vivienda2c,labels=c("1","2","3","4"))
-
-remesas_f2c<-datosCensoom$remesas
-remesas_fc<-factor(remesas_f2c,labels=c("si","no"))
-
-ben_gob2c<-datosCensoom$bengob
-ben_gobc<-factor(ben_gob2c,labels=c("si","no"))
-
-bienes_casa2c<-datosCensoom$bienes
-bienes_casac<-bienes_casa2c
-bienes_casac[bienes_casa2c < 5]<-1
-bienes_casac[(bienes_casa2c>= 5) & (bienes_casa2c < 9)]<-2
-bienes_casac[(bienes_casa2c>=9) & (bienes_casa2c<13)]<-3
-bienes_casac[(bienes_casa2c>=13) & (bienes_casa2c<=16)]<-4
-bienes_casa3c<-factor(bienes_casac,labels=c("1","2","3","4"))
-
-#Cambiar variable (años)
-
-colnames(datosCensoom)[16] <- "años_escolaridad"
-
-escuela2c<-datosCensoom$años_escolaridad
-escuelac<-escuela2c
-escuelac[escuela2c < 6]<-1
-escuelac[(escuela2c>= 6) & (escuela2c < 11)]<-2
-escuelac[(escuela2c>=11) & (escuela2c<18)]<-3
-escuelac[(escuela2c>=18)]<-4
-escuela3c<-factor(escuelac,labels=c("1","2","3","4"))
-
-rur_urb2c<-datosCensoom$rururb
-rur_urbc<-factor(rur_urb2c,labels=c("urb","rur"))
 
 #-------------------------
 
@@ -446,19 +393,19 @@ mod_5 <- lmer(data = dat_out, ys ~ (1| municipio) +
 
 #Define variables
 k <- numeric()
-Q <- numeric()
+Qr <- numeric()
 nummod <- 5
-
-
+mod <- c("mod")
+assign(mod, get(paste("mod_", 1, sep = "")))
 for(i in 1:nummod){
   assign(mod, get(paste("mod_", i, sep = "")))
-  
   for(j in 1:D){
     #Select municipality
-    d <- muns_uni[j]
+    d <- muns_uni[1]
     #Define parameters of each model and area
-    Xs <- model.matrix(paste(mod, i, sep = "_")) #Estimates Xp for each model
-    Xd <- Xs[datosMCSom$mun==d,] #subset Xd for each municipaliti
+    yss <- ys[municipio == d]
+    Xs <- model.matrix(mod) #Estimates Xp for each model
+    Xd <- Xs[datosMCSom$mun == d,] #subset Xd for each municipality
     p <- dim(Xd)[2] #dimensions of each model
     betaest <- fixed.effects(mod) #beta estimates for each model
     upred <- random.effects(mod)   #EBLUP for each model
@@ -468,8 +415,12 @@ for(i in 1:nummod){
     k <- sigmae2est/sigmau2est
     #compute gof 1 (propsed loss function)
   }
-  Q[i] <- 
-}
+  mean_ss <- as.matrix(Xd)%*%matrix(betaest,nr=p,nc=1)
+  Qr[i] <- (sum((mean_ss-(1/1+(k/nd[j]))*(mean_y[i] - 
+              as.matrix(mean_x[i])%*%matrix(betaest,nr=p,nc=1))^2) + 
+              (k*(sum((1/1+(k/nd[j]))*(mean_y[i] - 
+              as.matrix(mean_x[i])%*%matrix(betaest,nr=p,nc=1)))))))
+  }
 
 
 m <- matrix(1:20, 4)
