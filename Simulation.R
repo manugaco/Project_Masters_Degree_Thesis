@@ -392,12 +392,6 @@ for(i in 1:nummod){
     Q3[i] <- n*log(sigmae2est_s^2) + (sum(mean_ss - upred_rep)^2)/sigmae2est_s + D*log(sigmau2est_s^2) + sum(upred_rep^2) #+ 2*alpha2
   }
 
-m <- matrix(1:20, 4)
-sigma <- 1:ncol(m)
-omega <- 1:nrow(m)
-mu <- 2
-
-sum(((m - mu) / outer(omega, sigma))^2)
 
 #sims_Y <- list()
 #sims_y_bar <- list()
