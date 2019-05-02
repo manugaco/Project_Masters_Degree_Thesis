@@ -351,17 +351,19 @@ mod_5 <- update(mod_1, .~.+calidad_vivienda*rur_urb)
 
 #Define variables
 
+ini <- Sys.time()
+
 k <- numeric()
 Q1 <- numeric()
 Q2 <- numeric()
 Q3 <- numeric()
 nummod <- 5
 alpha1 <- c() #First penalty term
-alpha2 #Proposed penalty term
+alpha2 <- c()#Proposed penalty term
 
 for(i in 1:nummod){
     mod <- c("mod")
-    assign(mod, get(paste("mod_", 1, sep = "")))
+    assign(mod, get(paste("mod_", i, sep = "")))
   
     #Define parameters of each model and area
     
@@ -372,6 +374,7 @@ for(i in 1:nummod){
     sigmae2est_s <- summary(mod)$sigma^2 #error estimates for each model
     sigmau2est_s <- sqrt(as.numeric(VarCorr(mod))) #random effects estimates for each model
     alpha1 <- p_s
+    alpha2 <- 100 #this is just to alow the function go on, not the real penalty
     #compute gof (propsed loss function)
   
     mean_ss <- as.matrix(Xs_s)%*%matrix(betaest_s, nr = p_s, nc = 1)
@@ -379,19 +382,27 @@ for(i in 1:nummod){
     
     for(j in 1:nrow(upred_s)){
       if(j == 1){
-      upred_rep <- rep(upred_s[,1][j], n_s[as.numeric(rownames(upred_s))][j])
+        upred_rep <- rep(upred_s[,1][j], n_s[as.numeric(rownames(upred_s))][j])
       }else{
-      upred_rep <- c(upred_rep, rep(upred_s[,1][j], n_s[as.numeric(rownames(upred_s))][j]))  
+        upred_rep <- c(upred_rep, rep(upred_s[,1][j], n_s[as.numeric(rownames(upred_s))][j]))  
       }
     }
     
     #loop for each penalty
     
-    Q1[i] <- n*log(sigmae2est_s^2) + (sum(mean_ss - upred_rep)^2)/sigmae2est_s + D*log(sigmau2est_s^2) + sum(upred_rep^2) #alpha = 0
-    Q2[i] <- n*log(sigmae2est_s^2) + (sum(mean_ss - upred_rep)^2)/sigmae2est_s + D*log(sigmau2est_s^2) + sum(upred_rep^2) + 2*alpha1
-    Q3[i] <- n*log(sigmae2est_s^2) + (sum(mean_ss - upred_rep)^2)/sigmae2est_s + D*log(sigmau2est_s^2) + sum(upred_rep^2) #+ 2*alpha2
+    Q1[i] <- -2*(n*log(sigmae2est_s^2) + (sum(mean_ss - upred_rep)^2)/sigmae2est_s + D*log(sigmau2est_s^2) + sum(upred_rep^2)) #alpha = 0
+    Q2[i] <- -2*(n*log(sigmae2est_s^2) + (sum(mean_ss - upred_rep)^2)/sigmae2est_s + D*log(sigmau2est_s^2) + sum(upred_rep^2)) + 2*(alpha1 + 1)
+    Q3[i] <- -2*(n*log(sigmae2est_s^2) + (sum(mean_ss - upred_rep)^2)/sigmae2est_s + D*log(sigmau2est_s^2) + sum(upred_rep^2)) + 2*alpha2
+
   }
 
+results <- t(rbind(Q1, Q2, Q3))
+colnames(results) <- c("Without Penalty", "cAIC", "jAIC")
+rownames(results) <- c("mod1", "mod2", "mod3", "mod4", "mod5")
+
+which.min(results[which.min(results),])
+
+Sys.time() - ini
 
 #sims_Y <- list()
 #sims_y_bar <- list()
