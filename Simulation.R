@@ -25,7 +25,7 @@ library(readr)
 setwd("/Users/manugaco/Desktop/Thesis")
 
 datosMCS <- read_csv("Data/datosMCSom.csv", col_names = T)
-#datosCenso <-  read_csv("Data/datosCensoom.csv", col_names = T)
+datosCenso <-  read_csv("Data/datosCensoom.csv", col_names = T)
 
 
 ##### Check outliers and NAs
@@ -34,7 +34,7 @@ datosMCS <- read_csv("Data/datosMCSom.csv", col_names = T)
 # We remove data from municipality number 8 (outlying municipality) #Because after adjusting the model, it was outlier
 
 datosMCSom<-datosMCS[datosMCS$mun!=8,]
-#datosCensoom<-datosCenso[datosCenso$mun!=8,]
+datosCensoom<-datosCenso[datosCenso$mun!=8,]
 
 attach(datosMCSom) #name columns
 municipio <- (datosMCSom$mun) #create vector
@@ -56,15 +56,15 @@ N <- sum(datosCensoom$factor);N #estimate with w_i factor weights Horbit_Thomsom
 muns_uni <- unique(municipio) # vector of unique municipality indicators (codes), sorted from smaller to larger by they are NOT correlative
 D <- length(muns_uni)
 
-nd<-rep(0,D)  #sample size
-Nd<-rep(0,D)  #population size
+nd <- rep(0,D)  #sample size
+Nd <- rep(0,D)  #population size
 #ndc<-rep(0,D)  #census size
 
 for (i in 1:D){
   
   d <- muns_uni[i]
-  nd[i] <- sum(datosMCSom$mun==d)
-  Nd[i] <- round(sum(datosCensoom$factor[datosCensoom$mun==d]))
+  nd[i] <- sum(datosMCSom$mun == d)
+  Nd[i] <- round(sum(datosCensoom$factor[datosCensoom$mun == d]))
   #ndc[i] <- sum(datosCensoom$mun==d)
   
 }
@@ -139,7 +139,7 @@ sum(ictpc == 0)
 
 # Poverty line
 
-z <- 0.6*median(ictpc) #This is measurement used more in Europe
+z <- 1225 #This is measurement used more in Europe
 
 # Transform the income variable
 
@@ -156,13 +156,13 @@ hist(log(ictpct),freq=FALSE,main="")
 
 ##### Step 1 FIT MODEL
 
-ys <- log(ictpct) #Response, transformed
+y <- log(ictpct) #Response, transformed
 
 age2 <- age
 age2_2 <- age2^2
 age2_3 <- age2^3
 
-fit <- lmer(ys ~ (1|as.factor(municipio)) +
+fit <- lmer(y ~ (1|as.factor(municipio)) +
            age2 +
            age2_2 +
            age2_3 +
@@ -180,7 +180,7 @@ fit <- lmer(ys ~ (1|as.factor(municipio)) +
 
 # Remove non significant variables
 
-fit2 <- lmer(ys~(1|as.factor(municipio))+
+fit2 <- lmer(y ~ (1|as.factor(municipio)) +
                age2+
                age2_2+
                age2_3+
@@ -192,8 +192,6 @@ fit2 <- lmer(ys~(1|as.factor(municipio))+
                bienes_casa3+
                escuela3+
                clase_hogar*genero,REML=T)
-
-#RE-SCALING??
 
 Xs <- model.matrix(fit2) #Estimates Xp
 p <- dim(Xs)[2]
@@ -241,6 +239,7 @@ plot(fitted,res,xlab="Fitted values",ylab="Residuals")
 #sims_f_0 <- list()
 #sims_dat_out <- list()
 #sims_mods <- list()
+#sims <- list()
 
 #for(k in 1:S){
 
@@ -250,32 +249,35 @@ plot(fitted,res,xlab="Fitted values",ylab="Residuals")
 Y <- numeric()
 y_bar <- numeric()
 f_0 <- numeric()
+s_pop <- numeric()
 
 #Loop for generate the census
 for(i in 1:D){
   
-  print(paste("Municipality", i, sep = " ")) #indicate step
+  print(paste("Municipality", i, sep = " ")) #Indicate step
   d <- muns_uni[i]
   
-  Xd <- Xs[datosMCSom$mun==d,] #subset predictors for each municipality
-  mean_d <- as.matrix(Xd)%*%matrix(betaest,nr=p,nc=1) #compute the mean matrix
+  Xd <- Xs[datosMCSom$mun==d,] #Subset predictors for each municipality
+  mean_d <- as.matrix(Xd)%*%matrix(betaest,nr=p,nc=1) #Compute the mean matrix
   e_d <- rnorm(nd[i], 0, sqrt(sigmae2est)) #Sample error
   v_d <- rnorm(1, 0, sqrt(sigmau2est)) #Sample random effects
   
-  y_d <- mean_d + v_d + e_d #compute simulated response on a given area
-  Y[municipio == d] <- y_d #store of the simulation results for each area
-  
-  y_bar[i] <- sum(y_d)/nrow(Xd) #compute mean of the response for each area
-  f_0[i] <- sum(exp(y_d) < z)/nrow(Xd) #compute the poverty rate
+  y_d <- mean_d + v_d + e_d #Compute simulated response on a given area
+  Y[municipio == d] <- y_d #Store of the simulation results for each area (Census)
+  s_pop[i] <- nrow(Xd) 
+  y_bar[i] <- sum(y_d)/s_pop[i] #Compute mean of the response for each area
+  f_0[i] <- sum(exp(y_d) - m < z)/s_pop[i] #Compute the poverty rate
   
 }
+
+#median(exp(Y) - m) * 0.6
 
 #Store on each iteration
 #sims_Y[k] <- Y
 #sims_y_bar[k] <- y_bar
-#sims_f_o[k] <- f_0
+#sims_f_0[k] <- f_0
 
-summary(Y)
+Y
 y_bar
 f_0
 
@@ -283,26 +285,25 @@ f_0
 
 #Declare variables
 
-dat_in <- data.frame(ys, municipio, age2, age2_2, age2_3, ben_gob, bienes_casa3, clase_hogar, calidad_vivienda, 
+dat_in <- data.frame(Y, municipio, age2, age2_2, age2_3, ben_gob, bienes_casa3, clase_hogar, calidad_vivienda, 
                      escuela3, genero, pob_indigena, remesas_f, rur_urb, sector_actividad)
 
 #Loop for create the sampled data
+
+n_s <- round(s_pop/3)
+ind_s <- list()
+
 for(i in 1:D){
-  
-  d <- muns_uni[i] #index of municipality
-  dat_mun <- dat_in[dat_in$municipio==d,] #subset each municipality
-  colnames(dat_mun)[2] <- "municipio" #Rename column
-  mun <- length(which(datosMCSom$mun == d)) #Number of individuals per municipality
-  dat_s <- dat_mun[sample(nrow(dat_mun), sample(1:mun, 1), replace = F),] #Sample of individuals on each municipality
-  
-  #Creating a new dataframe with the sample (used for fit new models)
-  if(i == 1){
-  dat_out <- dat_s
-  }else{
-  dat_out <- rbind(dat_out, dat_s)
-  }
-  
+  d <- muns_uni[i]
+  dat_mun <- dat_in[dat_in$municipio==d,]
+  ind_s[[i]] <- sample(nrow(dat_mun), n_s[i], replace = F)
 }
+
+data_s <- NULL
+for(i in 1:D){
+  data_s <- rbind(data_s, dat_in[ind_s[[i]],])
+}
+
 
 #Store on each iteration
 #sims_dat_out[k] <- dat_out
@@ -314,7 +315,7 @@ for(i in 1:D){
 
 # Less Biased model without the non-significat interaction
 
-mod_1 <- lmer(ys ~ (1 | municipio) +
+mod_1 <- lmer(Y ~ (1 | municipio) +
           age2 +
           age2_2 +
           age2_3 +
@@ -325,64 +326,21 @@ mod_1 <- lmer(ys ~ (1 | municipio) +
           escuela3 +
           pob_indigena +
           sector_actividad +
-          clase_hogar*genero, data = dat_out, REML=T)
+          clase_hogar*genero, data = data_s, REML=T)
 
 #Define some models adding or deleting variables
   
 #Remove calidad_vivienda
-mod_2 <- lmer(data = dat_out, ys ~ (1 | municipio) +
-                age2 +
-                age2_2 +
-                age2_3 +
-                ben_gob +
-                bienes_casa3 +
-                clase_hogar +
-                escuela3 +
-                pob_indigena +
-                sector_actividad +
-                clase_hogar*genero, REML=T)
+mod_2 <- update(mod_1, .~.-calidad_vivienda)
 
 #Remove sector_actividad
-mod_3 <- lmer(data = dat_out, ys ~ (1| municipio) +
-                age2 +
-                age2_2 +
-                age2_3 +
-                ben_gob +
-                bienes_casa3 +
-                clase_hogar +
-                escuela3 +
-                pob_indigena +
-                clase_hogar*genero, REML=T)
+mod_3 <- update(mod_2, .~.-sector_actividad)
 
 #Add rur_urb
-mod_4 <- lmer(data = dat_out, ys ~ (1| municipio) +
-                age2 +
-                age2_2 +
-                age2_3 +
-                ben_gob +
-                bienes_casa3 +
-                clase_hogar +
-                calidad_vivienda +
-                escuela3 +
-                pob_indigena +
-                sector_actividad +
-                rur_urb +
-                clase_hogar*genero, REML=T)
+mod_4 <- update(mod_1, .~.+rur_urb)
 
 #Add calidad_vivienda*rur_urb
-mod_5 <- lmer(data = dat_out, ys ~ (1| municipio) +
-                age2 +
-                age2_2 +
-                age2_3 +
-                ben_gob +
-                bienes_casa3 +
-                clase_hogar +
-                calidad_vivienda +
-                escuela3 +
-                pob_indigena +
-                sector_actividad +
-                calidad_vivienda*rur_urb +
-                clase_hogar*genero, REML=T)
+mod_5 <- update(mod_1, .~.+calidad_vivienda*rur_urb)
 
 #Store each model, each iteration
 #sims_mods[k] <- c(mod_1, mod_2, mod_3, mod_4, mod_5)
@@ -392,36 +350,47 @@ mod_5 <- lmer(data = dat_out, ys ~ (1| municipio) +
 ##### Step 5 GOODNESS OF FIT MEASURES
 
 #Define variables
-k <- numeric()
-Qr <- numeric()
-nummod <- 5
-mod <- c("mod")
-assign(mod, get(paste("mod_", 1, sep = "")))
-for(i in 1:nummod){
-  assign(mod, get(paste("mod_", i, sep = "")))
-  for(j in 1:D){
-    #Select municipality
-    d <- muns_uni[1]
-    #Define parameters of each model and area
-    yss <- ys[municipio == d]
-    Xs <- model.matrix(mod) #Estimates Xp for each model
-    Xd <- Xs[datosMCSom$mun == d,] #subset Xd for each municipality
-    p <- dim(Xd)[2] #dimensions of each model
-    betaest <- fixed.effects(mod) #beta estimates for each model
-    upred <- random.effects(mod)   #EBLUP for each model
-    sigmae2est <- summary(mod)$sigma^2 #error estimates for each model
-    sigmau2est <- sqrt(as.numeric(VarCorr(mod))) #random effects estimates for each model
-    gammad <- sigmau2est/(sigmau2est+sigmae2est/nd[j])
-    k <- sigmae2est/sigmau2est
-    #compute gof 1 (propsed loss function)
-  }
-  mean_ss <- as.matrix(Xd)%*%matrix(betaest,nr=p,nc=1)
-  Qr[i] <- (sum((mean_ss-(1/1+(k/nd[j]))*(mean_y[i] - 
-              as.matrix(mean_x[i])%*%matrix(betaest,nr=p,nc=1))^2) + 
-              (k*(sum((1/1+(k/nd[j]))*(mean_y[i] - 
-              as.matrix(mean_x[i])%*%matrix(betaest,nr=p,nc=1)))))))
-  }
 
+k <- numeric()
+Q1 <- numeric()
+Q2 <- numeric()
+Q3 <- numeric()
+nummod <- 5
+alpha1 <- c() #First penalty term
+alpha2 #Proposed penalty term
+
+for(i in 1:nummod){
+    mod <- c("mod")
+    assign(mod, get(paste("mod_", 1, sep = "")))
+  
+    #Define parameters of each model and area
+    
+    Xs_s <- model.matrix(mod) #Estimates Xp for each model
+    p_s <- dim(Xs_s)[2] #dimensions of each model
+    betaest_s <- fixed.effects(mod) #beta estimates for each model
+    upred_s <- random.effects(mod)$municipio   #EBLUP for each model
+    sigmae2est_s <- summary(mod)$sigma^2 #error estimates for each model
+    sigmau2est_s <- sqrt(as.numeric(VarCorr(mod))) #random effects estimates for each model
+    alpha1 <- p_s
+    #compute gof (propsed loss function)
+  
+    mean_ss <- as.matrix(Xs_s)%*%matrix(betaest_s, nr = p_s, nc = 1)
+    upred_rep <- numeric()
+    
+    for(j in 1:nrow(upred_s)){
+      if(j == 1){
+      upred_rep <- rep(upred_s[,1][j], n_s[as.numeric(rownames(upred_s))][j])
+      }else{
+      upred_rep <- c(upred_rep, rep(upred_s[,1][j], n_s[as.numeric(rownames(upred_s))][j]))  
+      }
+    }
+    
+    #loop for each penalty
+    
+    Q1[i] <- n*log(sigmae2est_s^2) + (sum(mean_ss - upred_rep)^2)/sigmae2est_s + D*log(sigmau2est_s^2) + sum(upred_rep^2) #alpha = 0
+    Q2[i] <- n*log(sigmae2est_s^2) + (sum(mean_ss - upred_rep)^2)/sigmae2est_s + D*log(sigmau2est_s^2) + sum(upred_rep^2) + 2*alpha1
+    Q3[i] <- n*log(sigmae2est_s^2) + (sum(mean_ss - upred_rep)^2)/sigmae2est_s + D*log(sigmau2est_s^2) + sum(upred_rep^2) #+ 2*alpha2
+  }
 
 m <- matrix(1:20, 4)
 sigma <- 1:ncol(m)
@@ -430,8 +399,12 @@ mu <- 2
 
 sum(((m - mu) / outer(omega, sigma))^2)
 
-
-
+#sims_Y <- list()
+#sims_y_bar <- list()
+#sims_f_0 <- list()
+#sims_dat_out <- list()
+#sims_mods <- list()
+#sims[k] <- c(sims_Y, sims_y_bar, sims_)
 
 #} #End of simulation
 
