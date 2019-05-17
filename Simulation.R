@@ -343,24 +343,25 @@ Xnon <- data.frame(cbind(municipio = municipio[-ind_v], Xr[,-1]))
 
 form <- list()
 mod <- list()
+nummod <- 5
+
+#Define some models adding or deleting variables
 
 form[[1]] <- as.formula(Y ~ (1 | municipio) +
-                     age2 +
-                     age2_2 +
-                     age2_3 +
-                     ben_gob +
-                     bienes_casa3 +
-                     clase_hogar +
-                     calidad_vivienda +
-                     escuela3 +
-                     pob_indigena +
-                     sector_actividad +
-                     clase_hogar:genero)
+                          age2 +
+                          age2_2 +
+                          age2_3 +
+                          ben_gob +
+                          bienes_casa3 +
+                          clase_hogar +
+                          calidad_vivienda +
+                          escuela3 +
+                          pob_indigena +
+                          sector_actividad +
+                          clase_hogar:genero)
 
 mod[[1]] <- lmer(form[[1]], data = data_s, REML=T)
 
-#Define some models adding or deleting variables
-  
 #Remove calidad_vivienda
 
 form[[2]] <- update(form[[1]], .~. -calidad_vivienda)
@@ -394,7 +395,6 @@ k <- numeric()
 Qfm <- list()
 eblup <-list()
 eb <- list()
-nummod <- 5
 alpha1 <- c() #First penalty term
 alpha2 <- c()#Proposed penalty term
 
@@ -424,29 +424,93 @@ for(i in 1:nummod){
       Qf[j] <- Q + n*log(sigmae2est) + D*log(sigmau2est)
     }
     
-    Qfm[[i]] <- Qf #absolute value?
+    Qfm[[i]] <- Qf
     
     ##Step 6 Compute eblup and eb
     
-    # eblup[[i]] <- eblupBHF(formula = form[[i]], dom = municipio, meanxpop = data_means, 
+    # eblup[[i]] <- eblupBHF(formula = form[[i]], dom = municipio, meanxpop = data_means,
     #                      popnsize = data_ind, data = data_s)$eblup$eblup
     # 
     # eb[[i]] <- ebBHF(formula = form[[i]], dom = municipio, Xnonsample = Xnon, constant = m,
     #               indicator = pov_inc, data = data_s)$eb$eb
-  }
+}
 
-#par(mfrow = c(1,2))
 
-plot(Qfm[[1]], type = "l", col = "red", ylim = c(-5000, 20000))
-lines(Qfm[[2]], type = "l", col = "blue")
-lines(Qfm[[3]], type = "l", col = "green") #best model
-lines(Qfm[[4]], type = "l", col = "black")
-lines(Qfm[[5]], type = "l", col = "purple")
+
+#plotting the gof:
+
+dev.off()
+
+#All models in a single plot
+
+cols <- c("red", "blue", "green", "black", "purple")
+plot(Qfm[[1]], type = "l", col = cols[1], ylim = c(-5000, 20000))
+for(i in 2:5){
+  lines(Qfm[[i]], type = "l", col = cols[i])
+}
+
+#All models in a grid of plots
 
 par(mfrow = c(2,3))
 for(i in 1:5){
   plot(Qfm[[i]], type = "l")
 }
+
+
+#eblupBHF works only for the first model
+#ebBHF does not work on any model
+
+eblup[[1]] <- eblupBHF(formula = form[[1]], dom = municipio, selectdom = data_ind$municipio, meanxpop = data_means, 
+                              popnsize = data_ind, data = data_s)$eblup$eblup
+
+# fixed-effect model matrix is rank deficient so dropping 1 column / coefficient
+# There were 50 or more warnings (use warnings() to see the first 50)
+
+eblup[[2]] <- eblupBHF(formula = form[[2]], dom = municipio, selectdom = data_ind$municipio, meanxpop = data_means, 
+                              popnsize = data_ind, data = data_s)$eblup$eblup
+
+# fixed-effect model matrix is rank deficient so dropping 1 column / coefficient
+# Error in eblupBHF(formula = form[[2]], dom = municipio, selectdom = data_ind$municipio,  : 
+#                     dims [product 23] do not match the length of object [24]
+#                   In addition: Warning messages:
+#                     1: Some predictor variables are on very different scales: consider rescaling 
+#                   2: In matrix(fixef(fit.EB), nrow = p, ncol = 1) :
+#                     data length [22] is not a sub-multiple or multiple of the number of rows [23]
+#                   3: In meanxpop[i, ] - fd * meanXsd :
+#                     longer object length is not a multiple of shorter object length
+
+
+eblup[[3]] <- eblupBHF(formula = form[[3]], dom = municipio, selectdom = data_ind$municipio, meanxpop = data_means, 
+                       popnsize = data_ind, data = data_s)$eblup$eblup
+
+# fixed-effect model matrix is rank deficient so dropping 1 column / coefficient
+# Error in eblupBHF(formula = form[[3]], dom = municipio, selectdom = data_ind$municipio,  : 
+#                     dims [product 21] do not match the length of object [24]
+#                   In addition: Warning messages:
+#                     1: Some predictor variables are on very different scales: consider rescaling 
+#                   2: In matrix(fixef(fit.EB), nrow = p, ncol = 1) :
+#                     data length [20] is not a sub-multiple or multiple of the number of rows [21]
+#                   3: In meanxpop[i, ] - fd * meanXsd :
+#                     longer object length is not a multiple of shorter object length
+
+eb[[1]] <- ebBHF(formula = form[[1]], dom = municipio, Xnonsample = Xnon, constant = m,
+                       indicator = pov_inc, data = data_s)$eb$eb
+
+# fixed-effect model matrix is rank deficient so dropping 1 column / coefficient
+# Error in Xrd %*% betaest : non-conformable arguments
+# In addition: Warning messages:
+#   1: Some predictor variables are on very different scales: consider rescaling 
+# 2: In matrix(fixef(fit.EB), nrow = p, ncol = 1) :
+#   data length [25] is not a sub-multiple or multiple of the number of rows [26]
+
+
+data_ind$area == as.numeric(table(data_s$municipio))
+data_ind$municipio == data_means$municipio
+#Compare eblup with proposal:
+
+plot(Qfm[[1]], type = "l", col = "red", ylim = c(-5000, 35000))
+lines(eblup[[1]], type = "l", col = "blue")
+
 
 # plot(Qfm[[4]], type = "l", col = "blue", ylim = c(0, 40000))
 # lines(eblup[[1]], type = "l", col = "red")
@@ -461,9 +525,3 @@ for(i in 1:5){
 #} #End of simulation
 
 Sys.time() - ini #1.13s 1 loop
-
-which.min(results[which.min(results),])
-
-results <- t(rbind(Qf, eblup, eb))
-colnames(results) <- c("NP", "EBLUP", "EB")
-rownames(results) <- c("mod1", "mod2", "mod3", "mod4", "mod5")
