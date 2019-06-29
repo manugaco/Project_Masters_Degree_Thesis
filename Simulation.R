@@ -274,7 +274,7 @@ pov_inc <- function(y){
   result <- mean(y < z) 
 }
 
-#for(k in 1:S){
+#for(k in 1:S){ #Simulation
 
 ##### Step 2 GENERATE CENSUS Y_p and compute true values of Y_hat and F_o
 
@@ -362,26 +362,25 @@ popsize <- data.frame(cbind(muns_uni, Nd))
 form <- list()
 mod <- list()
 data_mods <- list()
+data_mods_Non <- list()
 means_mods <- list()
 nummod <- 5
 
 #Define some models adding or deleting variables
 
 form[[1]] <- as.formula(Y ~ (1 | municipio) +
-                          age2 +
-                          age2_2 +
-                          age2_3 +
-                          ben_gob +
-                          bienes_casa3 +
-                          clase_hogar +
-                          calidad_vivienda +
-                          escuela3 +
-                          pob_indigena +
-                          sector_actividad +
-                          clase_hogar:genero)
-
+                        age2 +
+                        age2_2 +
+                        age2_3 +
+                        ben_gob +
+                        bienes_casa3 +
+                        clase_hogar +
+                        calidad_vivienda +
+                        escuela3 +
+                        pob_indigena +
+                        sector_actividad +
+                        clase_hogar:genero)
 mod[[1]] <- lmer(form[[1]], data = data_s1, REML=T)
-
 data_mods[[1]] <- model.matrix(rep(1, length(age2)) ~
                          age2 +
                          age2_2 +
@@ -394,8 +393,9 @@ data_mods[[1]] <- model.matrix(rep(1, length(age2)) ~
                          pob_indigena +
                          sector_actividad +
                          clase_hogar:genero)
-
+data_mods_Non[[1]] <- data.frame(cbind(municipio = municipio[-ind_v], data_mods[[1]][-ind_v,]))
 means_mods[[1]] <- data.frame(cbind(muns_uni = municipio, data_mods[[1]][,-1])) %>% group_by(muns_uni) %>% summarise_all("mean")
+
 
 #Remove calidad_vivienda
 
@@ -412,6 +412,7 @@ data_mods[[2]] <- model.matrix(rep(1, length(age2)) ~
                          pob_indigena +
                          sector_actividad +
                          clase_hogar:genero)
+data_mods_Non[[2]] <- data.frame(cbind(municipio = municipio[-ind_v], data_mods[[2]][-ind_v,]))
 means_mods[[2]] <- data.frame(cbind(muns_uni = municipio, data_mods[[2]][,-1])) %>% group_by(muns_uni) %>% summarise_all("mean")
 
 #Remove sector_actividad
@@ -429,6 +430,7 @@ data_mods[[3]] <- model.matrix(rep(1, length(age2)) ~
                          escuela3 +
                          pob_indigena +
                          clase_hogar:genero)
+data_mods_Non[[3]] <- data.frame(cbind(municipio = municipio[-ind_v], data_mods[[3]][-ind_v,]))
 means_mods[[3]] <- data.frame(cbind(muns_uni = municipio, data_mods[[3]][,-1])) %>% group_by(muns_uni) %>% summarise_all("mean")
 #Add rur_urb
 
@@ -447,6 +449,7 @@ data_mods[[4]] <- model.matrix(rep(1, length(age2)) ~
                         pob_indigena +
                         sector_actividad +
                         clase_hogar:genero)
+data_mods_Non[[4]] <- data.frame(cbind(municipio = municipio[-ind_v], data_mods[[4]][-ind_v,]))
 means_mods[[4]] <- data.frame(cbind(muns_uni = municipio, data_mods[[4]][,-1])) %>% group_by(muns_uni) %>% summarise_all("mean")
 
 #Add calidad_vivienda*rur_urb
@@ -466,6 +469,7 @@ data_mods[[5]] <- model.matrix(rep(1, length(age2)) ~
                          pob_indigena +
                          sector_actividad +
                          clase_hogar:genero)
+data_mods_Non[[5]] <- data.frame(cbind(municipio = municipio[-ind_v], data_mods[[5]][-ind_v,]))
 means_mods[[5]] <- data.frame(cbind(muns_uni = municipio, data_mods[[5]][,-1])) %>% group_by(muns_uni) %>% summarise_all("mean")
 
 #Store each model, each iteration
@@ -515,97 +519,12 @@ for(i in 1:nummod){
       eblup[[i]] <- eblupBHF(formula = form[[i]], dom = municipio, meanxpop = means_mods[[i]],
                               popnsize = popsize, data = data_s1)$eblup
       
-      # eb[[i]] <- ebBHF(formula = form[[i]], dom = municipio, Xnonsample = Xnon, constant = m,
-      #                          indicator = pov_inc, data = data_s1)$eb
+      eb[[i]] <- ebBHF(formula = form[[i]], dom = municipio, Xnonsample = data_mods_Non[[i]], constant = m,
+                               indicator = pov_inc, data = data_s1)$eb
 }
 
-
-
-#eblupBHF works only for the first model
-#ebBHF does not work on any model
-
-#Try to definde the formula without using data = **
-
-eblupBHF(formula = form[[1]], dom = municipio, meanxpop = means_mods[[1]], 
-                         popnsize = popsize, data = data_s1)$eblup
-  
-eblup[[1]] <- eblupBHF(formula = form[[1]], dom = municipio, meanxpop = data_means, 
-                              popnsize = data_ind)$eblup$eblup
-
-eblup[[1]]
-
-
-form[[1]]
-colnames(data_means)
-
-# fixed-effect model matrix is rank deficient so dropping 1 column / coefficient
-# There were 50 or more warnings (use warnings() to see the first 50)
-
-eblup[[2]] <- eblupBHF(formula = form[[2]], dom = municipio, meanxpop = data_means, 
-                              popnsize = data_ind)$eblup$eblup
-
-length(data_ind$municipio)
-nrow(data_means)
-nrow(data_ind)
-nrow(data_s1)
-
-sum(data_ind$area)
-
-class(data_ind$municipio)
-
-# fixed-effect model matrix is rank deficient so dropping 1 column / coefficient
-# Error in eblupBHF(formula = form[[2]], dom = municipio, selectdom = data_ind$municipio,  : 
-#                     dims [product 23] do not match the length of object [24]
-#                   In addition: Warning messages:
-#                     1: Some predictor variables are on very different scales: consider rescaling 
-#                   2: In matrix(fixef(fit.EB), nrow = p, ncol = 1) :
-#                     data length [22] is not a sub-multiple or multiple of the number of rows [23]
-#                   3: In meanxpop[i, ] - fd * meanXsd :
-#                     longer object length is not a multiple of shorter object length
-
-
-eblup[[3]] <- eblupBHF(formula = form[[3]], dom = muns_uni, selectdom = data_ind$municipio, meanxpop = data_means, 
-                       popnsize = data_ind, data = data_s1)$eblup$eblup
-
-# fixed-effect model matrix is rank deficient so dropping 1 column / coefficient
-# Error in eblupBHF(formula = form[[3]], dom = municipio, selectdom = data_ind$municipio,  : 
-#                     dims [product 21] do not match the length of object [24]
-#                   In addition: Warning messages:
-#                     1: Some predictor variables are on very different scales: consider rescaling 
-#                   2: In matrix(fixef(fit.EB), nrow = p, ncol = 1) :
-#                     data length [20] is not a sub-multiple or multiple of the number of rows [21]
-#                   3: In meanxpop[i, ] - fd * meanXsd :
-#                     longer object length is not a multiple of shorter object length
-
-eb[[1]] <- ebBHF(formula = form[[1]], dom = muns_uni, Xnonsample = Xnon, constant = m,
-                       indicator = pov_inc, data = data_s1)$eb$eb
-
-# fixed-effect model matrix is rank deficient so dropping 1 column / coefficient
-# Error in Xrd %*% betaest : non-conformable arguments
-# In addition: Warning messages:
-#   1: Some predictor variables are on very different scales: consider rescaling 
-# 2: In matrix(fixef(fit.EB), nrow = p, ncol = 1) :
-#   data length [25] is not a sub-multiple or multiple of the number of rows [26]
-
-
-data_ind$area == as.numeric(table(data_s$municipio))
-data_ind$municipio == data_means$municipio
-#Compare eblup with proposal:
-
-plot(Qfm[[1]], type = "l", col = "red", ylim = c(-5000, 35000))
-lines(eblup[[1]], type = "l", col = "blue")
-
-
-# plot(Qfm[[4]], type = "l", col = "blue", ylim = c(0, 40000))
-# lines(eblup[[1]], type = "l", col = "red")
-
-#sims_Y <- list()
-#sims_y_bar <- list()
-#sims_f_0 <- list()
-#sims_dat_out <- list()
-#sims_mods <- list()
 #sims[k] <- c(sims_Y, sims_y_bar, sims_)
 
-} #End of simulation
+#} #End of simulation
 
 Sys.time() - ini #1.13s 1 loop
