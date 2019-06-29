@@ -25,7 +25,7 @@ library(tidyverse)
 
 ##### Load data and define objects
 
-setwd("/Users/manugaco/Desktop/Thesis")
+setwd("/Users/manugaco/Desktop/TFM")
 
 datosMCS <- read_csv("Data/datosMCSom.csv", col_names = T)
 #datosCenso <-  read_csv("Data/datosCensoom.csv", col_names = T)
@@ -173,7 +173,7 @@ age2 <- age
 age2_2 <- age2^2
 age2_3 <- age2^3
 
-fit <- lmer(y ~ (1|as.factor(municipio)) +
+fit_1 <- lmer(y ~ (1|as.factor(municipio)) +
            age2 +
            age2_2 +
            age2_3 +
@@ -188,9 +188,23 @@ fit <- lmer(y ~ (1|as.factor(municipio)) +
            clase_hogar*genero, REML=T)
 
 
+fit_2 <- lmer(y ~ (1|as.factor(municipio)) +
+              age2 +
+              age2_2 +
+              age2_3 +
+              pob_indigena +
+              sector_actividad +
+              clase_hogar +
+              calidad_vivienda +
+              ben_gob +
+              bienes_casa3 +
+              escuela3 +
+              calidad_vivienda*rur_urb +
+              clase_hogar*genero, REML=T)
+
 # Remove non significant variables
 
-fit2 <- lmer(y ~ (1|as.factor(municipio)) +
+fit_3 <- lmer(y ~ (1|as.factor(municipio)) +
                age2+
                age2_2+
                age2_3+
@@ -203,17 +217,17 @@ fit2 <- lmer(y ~ (1|as.factor(municipio)) +
                escuela3+
                clase_hogar*genero,REML=T)
 
-X <- model.matrix(fit2) #Estimates Xp
+X <- model.matrix(fit_2) #Estimates Xp
 p <- dim(X)[2]
-betaest <- fixed.effects(fit2)
-upred <- random.effects(fit2)   #EBLUP
-sigmae2est <- summary(fit2)$sigma^2
-sigmau2est <- sqrt(as.numeric(VarCorr(fit2)))
+betaest <- fixed.effects(fit_2)
+upred <- random.effects(fit_2)   #EBLUP
+sigmae2est <- summary(fit_2)$sigma^2
+sigmau2est <- sqrt(as.numeric(VarCorr(fit_2)))
 
 #Check the model
 
-res <- residuals(fit2)
-fitted <- fitted(fit2)
+res <- residuals(fit_2)
+fitted <- fitted(fit_2)
 
 # Check normality by histogram and normality qq-plot
 
@@ -319,18 +333,22 @@ ind_v <- NULL
   }
 #}
 
-data_s <- dat_pop[ind_v,]
-mun <- data_s$municipio
+data_s1 <- dat_pop[ind_v,]
+mun <- data_s1$municipio
+
+# data_s2 <- data_s1 %>% select(-calidad_vivienda)
+# data_s3 <- cbinddata_s1
+# data_s4 <- data_s1 %>% select(-calidad_vivienda)
+# data_s5 <- data_s1 %>% select(-calidad_vivienda)
 
 Xs <- X[ind_v, ]
 Xr <- X[-ind_v, ]
 
 Xin <- data.frame(cbind(municipio = municipio[ind_v], Xs[,-1]))
-
-data_means <- Xin %>% group_by(municipio) %>% summarise_all("mean")
 data_ind <- Xin %>% group_by(municipio) %>% summarize(area = n())
 
 Xnon <- data.frame(cbind(municipio = municipio[-ind_v], Xr[,-1]))
+popsize <- data.frame(cbind(muns_uni, Nd))
 
 #Store on each iteration
 #sims_dat_out[k] <- dat_out
@@ -343,6 +361,8 @@ Xnon <- data.frame(cbind(municipio = municipio[-ind_v], Xr[,-1]))
 
 form <- list()
 mod <- list()
+data_mods <- list()
+means_mods <- list()
 nummod <- 5
 
 #Define some models adding or deleting variables
@@ -360,27 +380,93 @@ form[[1]] <- as.formula(Y ~ (1 | municipio) +
                           sector_actividad +
                           clase_hogar:genero)
 
-mod[[1]] <- lmer(form[[1]], data = data_s, REML=T)
+mod[[1]] <- lmer(form[[1]], data = data_s1, REML=T)
+
+data_mods[[1]] <- model.matrix(rep(1, length(age2)) ~
+                         age2 +
+                         age2_2 +
+                         age2_3 +
+                         ben_gob +
+                         bienes_casa3 +
+                         clase_hogar +
+                         calidad_vivienda +
+                         escuela3 +
+                         pob_indigena +
+                         sector_actividad +
+                         clase_hogar:genero)
+
+means_mods[[1]] <- data.frame(cbind(muns_uni = municipio, data_mods[[1]][,-1])) %>% group_by(muns_uni) %>% summarise_all("mean")
 
 #Remove calidad_vivienda
 
 form[[2]] <- update(form[[1]], .~. -calidad_vivienda)
-mod[[2]] <- lmer(form[[2]], data = data_s, REML=T)
+mod[[2]] <- lmer(form[[2]], data = data_s1, REML=T)
+data_mods[[2]] <- model.matrix(rep(1, length(age2)) ~ 
+                         age2 +
+                         age2_2 +
+                         age2_3 +
+                         ben_gob +
+                         bienes_casa3 +
+                         clase_hogar +
+                         escuela3 +
+                         pob_indigena +
+                         sector_actividad +
+                         clase_hogar:genero)
+means_mods[[2]] <- data.frame(cbind(muns_uni = municipio, data_mods[[2]][,-1])) %>% group_by(muns_uni) %>% summarise_all("mean")
 
 #Remove sector_actividad
 
 form[[3]] <- update(form[[1]], .~. -sector_actividad)
-mod[[3]] <- lmer(form[[3]], data = data_s, REML=T)
-
+mod[[3]] <- lmer(form[[3]], data = data_s1, REML=T)
+data_mods[[3]] <- model.matrix(rep(1, length(age2)) ~
+                         age2 +
+                         age2_2 +
+                         age2_3 +
+                         ben_gob +
+                         bienes_casa3 +
+                         clase_hogar +
+                         calidad_vivienda +
+                         escuela3 +
+                         pob_indigena +
+                         clase_hogar:genero)
+means_mods[[3]] <- data.frame(cbind(muns_uni = municipio, data_mods[[3]][,-1])) %>% group_by(muns_uni) %>% summarise_all("mean")
 #Add rur_urb
 
 form[[4]] <- update(form[[1]], .~. +rur_urb)
-mod[[4]] <-lmer(form[[4]], data = data_s, REML=T)
+mod[[4]] <-lmer(form[[4]], data = data_s1, REML=T)
+data_mods[[4]] <- model.matrix(rep(1, length(age2)) ~ 
+                        age2 +
+                        age2_2 +
+                        age2_3 +
+                        ben_gob +
+                        bienes_casa3 +
+                        clase_hogar +
+                        calidad_vivienda +
+                        escuela3 +
+                        rur_urb +
+                        pob_indigena +
+                        sector_actividad +
+                        clase_hogar:genero)
+means_mods[[4]] <- data.frame(cbind(muns_uni = municipio, data_mods[[4]][,-1])) %>% group_by(muns_uni) %>% summarise_all("mean")
 
 #Add calidad_vivienda*rur_urb
 
 form[[5]] <- update(form[[1]], .~. +calidad_vivienda*rur_urb)
-mod[[5]] <- lmer(form[[5]], data = data_s, REML=T)
+mod[[5]] <- lmer(form[[5]], data = data_s1, REML=T)
+data_mods[[5]] <- model.matrix(rep(1, length(age2)) ~ 
+                         age2 +
+                         age2_2 +
+                         age2_3 +
+                         ben_gob +
+                         bienes_casa3 +
+                         clase_hogar +
+                         calidad_vivienda +
+                         calidad_vivienda*rur_urb +
+                         escuela3 +
+                         pob_indigena +
+                         sector_actividad +
+                         clase_hogar:genero)
+means_mods[[5]] <- data.frame(cbind(muns_uni = municipio, data_mods[[5]][,-1])) %>% group_by(muns_uni) %>% summarise_all("mean")
 
 #Store each model, each iteration
 #sims_mods[k] <- c(mod_1, mod_2, mod_3, mod_4, mod_5)
@@ -413,61 +499,59 @@ for(i in 1:nummod){
     #sigma_s <- matrix(c(sigmae2est_s, 0, 0, sigmau2est_s), ncol = 2)
     #compute gof (propsed loss function)
     
-    
+    Q <- 0
     for(j in 1:D){
-      Q <- 0
       d <- muns_uni[j]
-      Xd <- Xs_s[data_s$municipio == d,] #Subset predictors for each municipality
-      mean_d <- as.matrix(Xd)%*%matrix(betaest, nr=ps_s, nc=1)
-      Yd <- data_s$Y[data_s$municipio == d]
+      Xd <- Xs_s[data_s1$municipio == d,,drop=FALSE] #Subset predictors for each municipality
+      mean_d <- Xd%*%betaest_s
+      Yd <- data_s1$Y[data_s1$municipio == d]
       Q <- Q + sum(((Yd - mean_d - upred_s[j])^2))/sigmae2est + sum(upred_s[j]^2)/sigmau2est
-      Qf[j] <- Q + n*log(sigmae2est) + D*log(sigmau2est)
     }
-    
-    Qfm[[i]] <- Qf
-    
+
+      Qfm[[i]] <- Q + n*log(sigmae2est) + D*log(sigmau2est)
+
     ##Step 6 Compute eblup and eb
     
-    # eblup[[i]] <- eblupBHF(formula = form[[i]], dom = municipio, meanxpop = data_means,
-    #                      popnsize = data_ind, data = data_s)$eblup$eblup
-    # 
-    # eb[[i]] <- ebBHF(formula = form[[i]], dom = municipio, Xnonsample = Xnon, constant = m,
-    #               indicator = pov_inc, data = data_s)$eb$eb
+      eblup[[i]] <- eblupBHF(formula = form[[i]], dom = municipio, meanxpop = means_mods[[i]],
+                              popnsize = popsize, data = data_s1)$eblup
+      
+      # eb[[i]] <- ebBHF(formula = form[[i]], dom = municipio, Xnonsample = Xnon, constant = m,
+      #                          indicator = pov_inc, data = data_s1)$eb
 }
 
-
-
-#plotting the gof:
-
-dev.off()
-
-#All models in a single plot
-
-cols <- c("red", "blue", "green", "black", "purple")
-plot(Qfm[[1]], type = "l", col = cols[1], ylim = c(-5000, 20000))
-for(i in 2:5){
-  lines(Qfm[[i]], type = "l", col = cols[i])
-}
-
-#All models in a grid of plots
-
-par(mfrow = c(2,3))
-for(i in 1:5){
-  plot(Qfm[[i]], type = "l")
-}
 
 
 #eblupBHF works only for the first model
 #ebBHF does not work on any model
 
-eblup[[1]] <- eblupBHF(formula = form[[1]], dom = municipio, selectdom = data_ind$municipio, meanxpop = data_means, 
-                              popnsize = data_ind, data = data_s)$eblup$eblup
+#Try to definde the formula without using data = **
+
+eblupBHF(formula = form[[1]], dom = municipio, meanxpop = means_mods[[1]], 
+                         popnsize = popsize, data = data_s1)$eblup
+  
+eblup[[1]] <- eblupBHF(formula = form[[1]], dom = municipio, meanxpop = data_means, 
+                              popnsize = data_ind)$eblup$eblup
+
+eblup[[1]]
+
+
+form[[1]]
+colnames(data_means)
 
 # fixed-effect model matrix is rank deficient so dropping 1 column / coefficient
 # There were 50 or more warnings (use warnings() to see the first 50)
 
-eblup[[2]] <- eblupBHF(formula = form[[2]], dom = municipio, selectdom = data_ind$municipio, meanxpop = data_means, 
-                              popnsize = data_ind, data = data_s)$eblup$eblup
+eblup[[2]] <- eblupBHF(formula = form[[2]], dom = municipio, meanxpop = data_means, 
+                              popnsize = data_ind)$eblup$eblup
+
+length(data_ind$municipio)
+nrow(data_means)
+nrow(data_ind)
+nrow(data_s1)
+
+sum(data_ind$area)
+
+class(data_ind$municipio)
 
 # fixed-effect model matrix is rank deficient so dropping 1 column / coefficient
 # Error in eblupBHF(formula = form[[2]], dom = municipio, selectdom = data_ind$municipio,  : 
@@ -480,8 +564,8 @@ eblup[[2]] <- eblupBHF(formula = form[[2]], dom = municipio, selectdom = data_in
 #                     longer object length is not a multiple of shorter object length
 
 
-eblup[[3]] <- eblupBHF(formula = form[[3]], dom = municipio, selectdom = data_ind$municipio, meanxpop = data_means, 
-                       popnsize = data_ind, data = data_s)$eblup$eblup
+eblup[[3]] <- eblupBHF(formula = form[[3]], dom = muns_uni, selectdom = data_ind$municipio, meanxpop = data_means, 
+                       popnsize = data_ind, data = data_s1)$eblup$eblup
 
 # fixed-effect model matrix is rank deficient so dropping 1 column / coefficient
 # Error in eblupBHF(formula = form[[3]], dom = municipio, selectdom = data_ind$municipio,  : 
@@ -493,8 +577,8 @@ eblup[[3]] <- eblupBHF(formula = form[[3]], dom = municipio, selectdom = data_in
 #                   3: In meanxpop[i, ] - fd * meanXsd :
 #                     longer object length is not a multiple of shorter object length
 
-eb[[1]] <- ebBHF(formula = form[[1]], dom = municipio, Xnonsample = Xnon, constant = m,
-                       indicator = pov_inc, data = data_s)$eb$eb
+eb[[1]] <- ebBHF(formula = form[[1]], dom = muns_uni, Xnonsample = Xnon, constant = m,
+                       indicator = pov_inc, data = data_s1)$eb$eb
 
 # fixed-effect model matrix is rank deficient so dropping 1 column / coefficient
 # Error in Xrd %*% betaest : non-conformable arguments
@@ -522,6 +606,6 @@ lines(eblup[[1]], type = "l", col = "blue")
 #sims_mods <- list()
 #sims[k] <- c(sims_Y, sims_y_bar, sims_)
 
-#} #End of simulation
+} #End of simulation
 
 Sys.time() - ini #1.13s 1 loop
