@@ -651,7 +651,7 @@ Qfm #Añadir tabla con cada modelo, lo que hacen y con las medidas de bondad de 
 
 #dom, same size as y in the formula (3522)
 
-#EBLUP (Hay que quitar la parte de (1 | municipio_s) en todos los modelos, para EB también)
+#EBLUP
 
 for(i in 1:nummod){
   eblup[[i]] <- eblupBHF(formula = form_s_est[[i]], dom = municipio_s, meanxpop = means_mods[[i]],
