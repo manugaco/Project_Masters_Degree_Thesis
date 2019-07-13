@@ -161,6 +161,8 @@ k <- 170 #Asymetric constant
 m <- abs(min(ictpc)) + k
 ictpct <- ictpc + m
 
+summary(ictpc)
+
 hist(ictpc,freq=FALSE,main="")
 
 hist(log(ictpct),freq=FALSE,main="")
@@ -172,49 +174,73 @@ hist(log(ictpct),freq=FALSE,main="")
 
 y <- log(ictpct) #Response, transformed
 
+summary(y)
+
 fit_1 <- lmer(y ~ (1|as.factor(municipio)) +
-           age2 +
-           age2_2 +
-           age2_3 +
-           pob_indigena +
-           sector_actividad +
-           clase_hogar +
-           calidad_vivienda +
-           ben_gob +
-           bienes_casa3 +
-           escuela3 +
-           calidad_vivienda*rur_urb +
-           clase_hogar*genero, REML=T)
+                age2 +
+                age2_2 +
+                age2_3 +
+                pob_indigena +
+                sector_actividad +
+                calidad_vivienda+
+                rur_urb +
+                ben_gob +
+                bienes_casa3 +
+                clase_hogar +
+                genero +
+                escuela3 +
+                calidad_vivienda*rur_urb +
+                clase_hogar*genero, REML=T)
 
-
-fit_2 <- lmer(y ~ (1|as.factor(municipio)) +
-              age2 +
-              age2_2 +
-              age2_3 +
-              pob_indigena +
-              sector_actividad +
-              clase_hogar +
-              calidad_vivienda +
-              ben_gob +
-              bienes_casa3 +
-              escuela3 +
-              calidad_vivienda*rur_urb +
-              clase_hogar*genero, REML=T)
+library(nlme)
+pv <- lme(y~age2 +
+            age2_2 +
+            age2_3 +
+            pob_indigena +
+            sector_actividad +
+            calidad_vivienda+
+            rur_urb +
+            ben_gob +
+            bienes_casa3 +
+            clase_hogar +
+            genero +
+            escuela3 +
+            calidad_vivienda*rur_urb +
+            clase_hogar*genero,random=~1|as.factor(municipio))
+anova(pv)
 
 # Remove non significant variables
+# Remove age_3 because is not significant, in advance
 
-fit_3 <- lmer(y ~ (1|as.factor(municipio)) +
-               age2+
-               age2_2+
-               age2_3+
-               pob_indigena+
-               sector_actividad+
-               clase_hogar+
-               calidad_vivienda+
-               ben_gob+
-               bienes_casa3+
-               escuela3+
-               clase_hogar*genero,REML=T)
+fit_2 <- lmer(y ~ (1|as.factor(municipio)) +
+                age2 +
+                age2_2 +
+                pob_indigena +
+                sector_actividad +
+                calidad_vivienda+
+                rur_urb +
+                ben_gob +
+                bienes_casa3 +
+                clase_hogar +
+                genero +
+                escuela3 +
+                calidad_vivienda*rur_urb +
+                clase_hogar*genero,REML=T)
+
+pv2 <- lme(y~age2 +
+            age2_2 +
+            pob_indigena +
+            sector_actividad +
+            calidad_vivienda+
+            rur_urb +
+            ben_gob +
+            bienes_casa3 +
+            clase_hogar +
+            genero +
+            escuela3 +
+            calidad_vivienda*rur_urb +
+            clase_hogar*genero,random=~1|as.factor(municipio))
+anova(pv2)
 
 X <- model.matrix(fit_2) #Estimates Xp
 p <- dim(X)[2]
@@ -269,7 +295,7 @@ S <- 1000
 
 #Input function for eb function
 pov_inc <- function(y){
-  z <- 1225
+  z <- 1200
   result <- mean(y < z) 
 }
 
@@ -300,7 +326,7 @@ for(i in 1:D){
   
 }
 
-#median(exp(Y) - m) * 0.6
+median(exp(Y) - m) * 0.6
 
 #Store on each iteration
 #sims_Y[k] <- Y
@@ -310,13 +336,14 @@ for(i in 1:D){
 Y
 y_bar
 f_0
-e_Y <- exp(Y)
+e_Y <- exp(Y) - m
+e_Y
 
 ##### Step 3 SRSWOR municipalities
 
 #Declare variables
 
-dat_pop <- data.frame(Y, municipio, age2, age2_2, age2_3, ben_gob, bienes_casa3, clase_hogar, 
+dat_pop <- data.frame(Y, municipio, age2, age2_2, ben_gob, bienes_casa3, clase_hogar, 
                       calidad_vivienda, escuela3, genero, pob_indigena, remesas_f, rur_urb, 
                       sector_actividad)
 
@@ -334,7 +361,9 @@ for(i in 1:D){
 
 data_s1 <- dat_pop[ind_v,]
 Y_s <- Y[ind_v]
+mean(Y_s)
 e_Y_s <- e_Y[ind_v]
+mean(e_Y_s)
 
 Xs <- X[ind_v, ]
 Xr <- X[-ind_v, ]
@@ -350,7 +379,6 @@ popsize <- data.frame(cbind(muns_uni, Nd))
 municipio_s <- municipio[ind_v]
 age2_s <- age2[ind_v]
 age2_2_s <- age2_2[ind_v]
-age2_3_s <- age2_3[ind_v]
 ben_gob_s <- ben_gob[ind_v] 
 bienes_casa3_s <- bienes_casa3[ind_v]
 clase_hogar_s <- clase_hogar[ind_v]
@@ -363,11 +391,11 @@ clase_hogar_s <- clase_hogar[ind_v]
 genero_s <- genero[ind_v]
 rur_urb_s <- rur_urb[ind_v]
 
-dat_s1_s <- data.frame(Y_s, municipio_s, age2_s, age2_2_s, age2_3_s, ben_gob_s, bienes_casa3_s, clase_hogar_s, 
+dat_s1_s <- data.frame(Y_s, municipio_s, age2_s, age2_2_s, ben_gob_s, bienes_casa3_s, clase_hogar_s, 
                        calidad_vivienda_s, escuela3_s, genero_s, pob_indigena_s, remesas_f_s, rur_urb_s, 
                        sector_actividad_s)
 
-dat_s1_s_e <- data.frame(e_Y_s, municipio_s, age2_s, age2_2_s, age2_3_s, ben_gob_s, bienes_casa3_s, clase_hogar_s, 
+dat_s1_s_e <- data.frame(e_Y_s, municipio_s, age2_s, age2_2_s, ben_gob_s, bienes_casa3_s, clase_hogar_s, 
                          calidad_vivienda_s, escuela3_s, genero_s, pob_indigena_s, remesas_f_s, rur_urb_s, 
                          sector_actividad_s)
 
@@ -382,7 +410,9 @@ dat_s1_s_e <- data.frame(e_Y_s, municipio_s, age2_s, age2_2_s, age2_3_s, ben_gob
 
 form <- list()
 form_s <- list()
+form_s_est <- list()
 form_s_e <- list()
+form_s_e_est <- list()
 mod <- list()
 data_mods <- list()
 data_mods_Non <- list()
@@ -391,11 +421,12 @@ nummod <- 5
 
 
 #Define some models adding or deleting variables
+#We removed the variable rur_urb and its interaction
+
 
 form[[1]] <- as.formula(Y ~ (1 | municipio) +
                         age2 +
                         age2_2 +
-                        age2_3 +
                         ben_gob +
                         bienes_casa3 +
                         clase_hogar +
@@ -403,12 +434,23 @@ form[[1]] <- as.formula(Y ~ (1 | municipio) +
                         escuela3 +
                         pob_indigena +
                         sector_actividad +
-                        clase_hogar:genero)
+                        clase_hogar*genero)
 
 form_s[[1]] <- as.formula(Y_s ~ (1 | municipio_s) +
                             age2_s +
                             age2_2_s +
-                            age2_3_s +
+                            ben_gob_s +
+                            bienes_casa3_s +
+                            clase_hogar_s +
+                            calidad_vivienda_s +
+                            escuela3_s +
+                            pob_indigena_s +
+                            sector_actividad_s +
+                            clase_hogar_s:genero_s)
+
+form_s_est[[1]] <- as.formula(Y_s ~
+                            age2_s +
+                            age2_2_s +
                             ben_gob_s +
                             bienes_casa3_s +
                             clase_hogar_s +
@@ -421,7 +463,6 @@ form_s[[1]] <- as.formula(Y_s ~ (1 | municipio_s) +
 form_s_e[[1]] <- as.formula(e_Y_s ~ (1 | municipio_s) +
                             age2_s +
                             age2_2_s +
-                            age2_3_s +
                             ben_gob_s +
                             bienes_casa3_s +
                             clase_hogar_s +
@@ -431,11 +472,22 @@ form_s_e[[1]] <- as.formula(e_Y_s ~ (1 | municipio_s) +
                             sector_actividad_s +
                             clase_hogar_s:genero_s)
 
-mod[[1]] <- lmer(form[[1]], data = data_s1, REML=T)
+form_s_e_est[[1]] <- as.formula(e_Y_s ~
+                              age2_s +
+                              age2_2_s +
+                              ben_gob_s +
+                              bienes_casa3_s +
+                              clase_hogar_s +
+                              calidad_vivienda_s +
+                              escuela3_s +
+                              pob_indigena_s +
+                              sector_actividad_s +
+                              clase_hogar_s:genero_s)
+
+mod[[1]] <- lmer(form_s[[1]], data = dat_s1_s, REML=T)
 data_mods[[1]] <- model.matrix(rep(1, length(age2)) ~
                          age2 +
                          age2_2 +
-                         age2_3 +
                          ben_gob +
                          bienes_casa3 +
                          clase_hogar +
@@ -445,62 +497,68 @@ data_mods[[1]] <- model.matrix(rep(1, length(age2)) ~
                          sector_actividad +
                          clase_hogar:genero)
 data_mods_Non[[1]] <- data.frame(cbind(municipio = municipio[-ind_v], data_mods[[1]][-ind_v,]))
+data_mods_Non[[1]] <- data_mods_Non[[1]][,-2]
 means_mods[[1]] <- data.frame(cbind(muns_uni = municipio, data_mods[[1]][,-1])) %>% group_by(muns_uni) %>% summarise_all("mean")
 
 
-#Remove calidad_vivienda
+#mod1 without calidad_vivienda, (also from the best model, We removed the variable rur_urb and its interaction)
 
 form[[2]] <- update(form[[1]], .~. -calidad_vivienda)
 form_s[[2]] <- update(form_s[[1]], .~. -calidad_vivienda_s)
+form_s_est[[2]] <- update(form_s_est[[1]], .~. -calidad_vivienda_s)
 form_s_e[[2]] <- update(form_s_e[[1]], .~. -calidad_vivienda_s)
+form_s_e_est[[2]] <- update(form_s_e_est[[1]], .~. -calidad_vivienda_s)
 
-mod[[2]] <- lmer(form[[2]], data = data_s1, REML=T)
+mod[[2]] <- lmer(form_s[[2]], data = dat_s1_s, REML=T)
 data_mods[[2]] <- model.matrix(rep(1, length(age2)) ~ 
                          age2 +
                          age2_2 +
-                         age2_3 +
                          ben_gob +
                          bienes_casa3 +
                          clase_hogar +
                          escuela3 +
                          pob_indigena +
                          sector_actividad +
-                         clase_hogar:genero)
+                         clase_hogar*genero)
 data_mods_Non[[2]] <- data.frame(cbind(municipio = municipio[-ind_v], data_mods[[2]][-ind_v,]))
+data_mods_Non[[2]] <- data_mods_Non[[2]][,-2]
 means_mods[[2]] <- data.frame(cbind(muns_uni = municipio, data_mods[[2]][,-1])) %>% group_by(muns_uni) %>% summarise_all("mean")
 
-#Remove sector_actividad
+#mod1 without sector_actividad, (also from the best model, We removed the variable rur_urb and its interaction)
 
 form[[3]] <- update(form[[1]], .~. -sector_actividad)
 form_s[[3]] <- update(form_s[[1]], .~. -sector_actividad_s)
+form_s_est[[3]] <- update(form_s_est[[1]], .~. -sector_actividad_s)
 form_s_e[[3]] <- update(form_s_e[[1]], .~. -sector_actividad_s)
+form_s_e_est[[3]] <- update(form_s_e_est[[1]], .~. -sector_actividad_s)
 
-mod[[3]] <- lmer(form[[3]], data = data_s1, REML=T)
+mod[[3]] <- lmer(form_s[[3]], data = dat_s1_s, REML=T)
 data_mods[[3]] <- model.matrix(rep(1, length(age2)) ~
                          age2 +
                          age2_2 +
-                         age2_3 +
                          ben_gob +
                          bienes_casa3 +
                          clase_hogar +
                          calidad_vivienda +
                          escuela3 +
                          pob_indigena +
-                         clase_hogar:genero)
+                         clase_hogar*genero)
 data_mods_Non[[3]] <- data.frame(cbind(municipio = municipio[-ind_v], data_mods[[3]][-ind_v,]))
+data_mods_Non[[3]] <- data_mods_Non[[3]][,-2]
 means_mods[[3]] <- data.frame(cbind(muns_uni = municipio, data_mods[[3]][,-1])) %>% group_by(muns_uni) %>% summarise_all("mean")
 
-#Add rur_urb
+#mod1 adding rur_urb but without interaction
 
 form[[4]] <- update(form[[1]], .~. +rur_urb)
 form_s[[4]] <- update(form_s[[1]], .~. +rur_urb_s)
+form_s_est[[4]] <- update(form_s_est[[1]], .~. +rur_urb_s)
 form_s_e[[4]] <- update(form_s_e[[1]], .~. +rur_urb_s)
+form_s_e_est[[4]] <- update(form_s_e_est[[1]], .~. +rur_urb_s)
 
-mod[[4]] <-lmer(form[[4]], data = data_s1, REML=T)
+mod[[4]] <-lmer(form_s[[4]], data = dat_s1_s, REML=T)
 data_mods[[4]] <- model.matrix(rep(1, length(age2)) ~ 
                         age2 +
                         age2_2 +
-                        age2_3 +
                         ben_gob +
                         bienes_casa3 +
                         clase_hogar +
@@ -509,20 +567,22 @@ data_mods[[4]] <- model.matrix(rep(1, length(age2)) ~
                         rur_urb +
                         pob_indigena +
                         sector_actividad +
-                        clase_hogar:genero)
+                        clase_hogar*genero)
 data_mods_Non[[4]] <- data.frame(cbind(municipio = municipio[-ind_v], data_mods[[4]][-ind_v,]))
+data_mods_Non[[4]] <- data_mods_Non[[4]][,-2]
 means_mods[[4]] <- data.frame(cbind(muns_uni = municipio, data_mods[[4]][,-1])) %>% group_by(muns_uni) %>% summarise_all("mean")
 
-#Add calidad_vivienda*rur_urb
+#Add calidad_vivienda*rur_urb (so rur_urb main_effect is added) (this is the correct model)
 
 form[[5]] <- update(form[[1]], .~. +calidad_vivienda*rur_urb)
 form_s[[5]] <- update(form_s[[1]], .~. +calidad_vivienda_s*rur_urb_s)
+form_s_est[[5]] <- update(form_s_est[[1]], .~. +calidad_vivienda_s*rur_urb_s)
 form_s_e[[5]] <- update(form_s_e[[1]], .~. +calidad_vivienda_s*rur_urb_s)
-mod[[5]] <- lmer(form[[5]], data = data_s1, REML=T)
+form_s_e_est[[5]] <- update(form_s_e_est[[1]], .~. +calidad_vivienda_s*rur_urb_s)
+mod[[5]] <- lmer(form_s[[5]], data = dat_s1_s, REML=T)
 data_mods[[5]] <- model.matrix(rep(1, length(age2)) ~ 
                          age2 +
                          age2_2 +
-                         age2_3 +
                          ben_gob +
                          bienes_casa3 +
                          clase_hogar +
@@ -531,8 +591,9 @@ data_mods[[5]] <- model.matrix(rep(1, length(age2)) ~
                          escuela3 +
                          pob_indigena +
                          sector_actividad +
-                         clase_hogar:genero)
+                         clase_hogar*genero)
 data_mods_Non[[5]] <- data.frame(cbind(municipio = municipio[-ind_v], data_mods[[5]][-ind_v,]))
+data_mods_Non[[5]] <- data_mods_Non[[5]][,-2]
 means_mods[[5]] <- data.frame(cbind(muns_uni = municipio, data_mods[[5]][,-1])) %>% group_by(muns_uni) %>% summarise_all("mean")
 
 #Store each model, each iteration
@@ -550,6 +611,8 @@ eblup <-list()
 eb <- list()
 alpha1 <- c() #First penalty term
 alpha2 <- c()#Proposed penalty term
+
+#GOF by maximum likelihood, without penalty
 
 for(i in 1:nummod){
   
@@ -579,21 +642,26 @@ for(i in 1:nummod){
 
 }
 
+#Log-likelihood, the best model is the expected, model 5.
+
+Qfm #Añadir tabla con cada modelo, lo que hacen y con las medidas de bondad de ajuste
+
+
 ##Step 6 Compute eblup and eb
 
 #dom, same size as y in the formula (3522)
 
-#EBLUP
+#EBLUP (Hay que quitar la parte de (1 | municipio_s) en todos los modelos, para EB también)
 
 for(i in 1:nummod){
-  eblup[[i]] <- eblupBHF(formula = form_s[[i]], dom = municipio_s, meanxpop = means_mods[[i]],
+  eblup[[i]] <- eblupBHF(formula = form_s_est[[i]], dom = municipio_s, meanxpop = means_mods[[i]],
                          popnsize = popsize, data = dat_s1_s)$eblup
 }
 
 #EB
 
 for(i in 1:nummod){
-eb[[i]] <- ebBHF(formula = form_s_e[[i]], dom =  municipio_s, Xnonsample = data_mods_Non[[i]], constant = m,
+eb[[i]] <- ebBHF(formula = form_s_e_est[[i]], dom =  municipio_s, Xnonsample = data_mods_Non[[i]], constant = m,
                  indicator = pov_inc)$eb
 }
 
