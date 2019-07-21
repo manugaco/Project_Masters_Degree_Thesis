@@ -94,7 +94,7 @@ pob_indigena <- factor(pob_indigena2,labels=c("No","Si"))
 sector_actividad2 <- datosMCSom$sector_act
 sector_actividad <- factor(sector_actividad2,labels=c("1","2","3","4","5","6"))
 
-colnames(datosMCSom)[15] <- "años_escolaridad"
+colnames(datosMCSom)[15] <- "anos_escolaridad"
 years_study <- datosMCSom$años_escolaridad
 
 age <- datosMCSom$edad
@@ -126,9 +126,9 @@ bienes_casa3 <- factor(bienes_casa,labels=c("1","2","3","4"))
 
 #Change column name
 
-colnames(datosMCSom)[15] <- "años_escolaridad"
+colnames(datosMCSom)[15] <- "anos_escolaridad"
 
-escuela2 <- datosMCSom$años_escolaridad
+escuela2 <- datosMCSom$anos_escolaridad
 escuela <- escuela2
 escuela[escuela2 < 6] <- 1
 escuela[(escuela2 >= 6) & (escuela2 < 11)] <- 2
@@ -282,24 +282,28 @@ plot(fitted,res,xlab="Fitted values",ylab="Residuals")
 
 ##### Step 7 REPEAT steps 2-6 and compute MSE
 
-ini <- Sys.time()
-
-S <- 1000
-
-#sims_Y <- list()
-#sims_y_bar <- list()
-#sims_f_0 <- list()
-#sims_dat_out <- list()
-#sims_mods <- list()
-#sims <- list()
-
 #Input function for eb function
 pov_inc <- function(y){
   z <- 1200
   result <- mean(y < z) 
 }
 
-#for(k in 1:S){ #Simulation
+#Inizializing objects
+
+#Goodness of fit
+GOF <- list() #Nested list with all the measures, three vectors for each simulation
+
+#Mean squared error
+MSE_ybarhat <- list()
+MSE_fhat <- list()
+
+#Number of simulations
+
+S <- 100
+
+ini <- Sys.time()
+
+for(h in 1:S){ #Simulation
 
 ##### Step 2 GENERATE CENSUS Y_p and compute true values of Y_hat and F_o
 
@@ -309,6 +313,7 @@ y_bar <- numeric()
 f_0 <- numeric()
 
 #Loop for generate the census
+
 for(i in 1:D){
   
   print(paste("Municipality", i, sep = " ")) #Indicate step
@@ -326,18 +331,14 @@ for(i in 1:D){
   
 }
 
-median(exp(Y) - m) * 0.6
+#median(exp(Y) - m) * 0.6
 
 #Store on each iteration
 #sims_Y[k] <- Y
 #sims_y_bar[k] <- y_bar
 #sims_f_0[k] <- f_0
 
-Y
-y_bar
-f_0
 e_Y <- exp(Y) - m
-e_Y
 
 ##### Step 3 SRSWOR municipalities
 
@@ -606,17 +607,16 @@ means_mods[[5]] <- data.frame(cbind(muns_uni = municipio, data_mods[[5]][,-1])) 
 #Define variables
 
 k <- numeric()
-Qfm <- list()
+Qfm_alpha0 <- numeric()
+Qfm_alpha1 <- numeric()
+Qfm_alpha2 <- numeric()
 eblup <-list()
 eb <- list()
-alpha1 <- c() #First penalty term
-alpha2 <- c()#Proposed penalty term
 
 #GOF by maximum likelihood, without penalty
 
 for(i in 1:nummod){
   
-    Qf <- numeric()
     #Define parameters of each model and area
     
     Xs_s <- model.matrix(mod[[i]]) #Estimates Xp for each model
@@ -625,8 +625,7 @@ for(i in 1:nummod){
     upred_s <- random.effects(mod[[i]])$municipio[,1]   #EBLUP for each model
     sigmae2est_s <- summary(mod[[i]])$sigma^2 #error estimates for each model
     sigmau2est_s <- sqrt(as.numeric(VarCorr(mod[[i]]))) #random effects estimates for each model
-    
-    #sigma_s <- matrix(c(sigmae2est_s, 0, 0, sigmau2est_s), ncol = 2)
+  
     #compute gof (propsed loss function)
     
     Q <- 0
@@ -638,14 +637,14 @@ for(i in 1:nummod){
       Q <- Q + sum(((Yd - mean_d - upred_s[j])^2))/sigmae2est + sum(upred_s[j]^2)/sigmau2est
     }
 
-      Qfm[[i]] <- Q + n*log(sigmae2est) + D*log(sigmau2est)
+    Qfm_alpha0[i] <- Q + n*log(sigmae2est) + D*log(sigmau2est) #alpha0
+    Qfm_alpha1[i] <- Qfm_alpha0[i] + 2*(ncol(Xs_s) + 2)
+    #rho <- ()
+    #Qfm_alpha2[[i]] <- Qfm[[i]] + 2*(rho + 2)
 
 }
 
 #Log-likelihood, the best model is the expected, model 5.
-
-Qfm #Añadir tabla con cada modelo, lo que hacen y con las medidas de bondad de ajuste
-
 
 ##Step 6 Compute eblup and eb
 
@@ -665,12 +664,92 @@ eb[[i]] <- ebBHF(formula = form_s_e_est[[i]], dom =  municipio_s, Xnonsample = d
                  indicator = pov_inc)$eb
 }
 
+#Save GOF
+gofs <- list()
 
-#sims[k] <- c(sims_Y, sims_y_bar, sims_)
+gofs[[1]] <- Qfm_alpha0
+gofs[[2]] <- Qfm_alpha1
+gofs[[3]] <- Qfm_alpha2
+GOF[[h]] <- gofs 
 
-#} #End of simulation
+#Mean squared error for y_bar
 
-Sys.time() - ini #6.475s 1 loop
+y_barhat_ls <- list()
+for(i in 1:nummod){
+  y_barhat_ls[[i]] <- (eblup[[i]]$eblup - y_bar)^2
+}
+
+MSE_ybarhat[[h]] <- y_barhat_ls
+
+#Mean squared error for f_o
+
+fo_hat_ls <- list()
+for(i in 1:nummod){
+  fo_hat_ls[[i]] <- (eb[[i]]$eb - f_0)^2
+}
+
+MSE_fhat[[h]] <- fo_hat_ls
+  
+} #End of simulation
+
+Sys.time() - ini #8.853463 mins 100 times
+
+#Empirical GOF average, per model
+
+numgof <- 3
+avg_gof <- list()
+for(i in 1:numgof){
+  aux <- 0
+  for(j in 1:S){
+   aux <- GOF[[j]][[i]] + aux
+  }
+  avg_gof[[i]] <- aux/S #Divide by the number of simulations
+}
+
+which.max(abs(avg_gof[[1]]))
+which.max(abs(avg_gof[[2]]))
+#which.max(abs(avg_gof[[3]]))
+
+#The maximum averaged gof test, using the different penalties, is the model 5, as expected
+
+#Computing MSE of y_bar
+
+MSE_Y <- list()
+result_y <- matrix(0, ncol = 5, nrow = 57)
+for(i in 1:nummod){
+  aux <- 0
+  for(j in 1:S){
+    aux <- MSE_ybarhat[[j]][[i]] + aux
+  }
+  MSE_Y [[i]] <- aux/S
+  result_y[,i] <- t(aux/S)
+}
+colnames(result_y) <- c("Model 1", "Model 2", "Model 3", "Model 4", "Model 5")
+
+#Computing MSE of F_0
+
+MSE_F0 <- list()
+result_f0 <- matrix(0, ncol = 5, nrow = 57)
+for(i in 1:nummod){
+  aux <- 0
+  for(j in 1:S){
+    aux <- MSE_fhat[[j]][[i]] + aux
+  }
+  MSE_F0 [[i]] <- aux/S
+  result_f0[,i] <- t(aux/S)
+}
+colnames(result_f0) <- c("Model 1", "Model 2", "Model 3", "Model 4", "Model 5")
+
+#Step 8 PLOTS
+
+#Boxplot of MSE Y_bar
+
+boxplot(result_y)
+
+#Boxplot of MSE f_0
+
+boxplot(result_f0)
+
 
 
 
