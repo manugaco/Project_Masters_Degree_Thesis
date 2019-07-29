@@ -290,6 +290,9 @@ pov_inc <- function(y){
 
 #Inizializing objects
 
+eblup_l <- list()
+eb_l <- list()
+
 #Goodness of fit
 GOF <- list() #Nested list with all the measures, three vectors for each simulation
 
@@ -298,12 +301,11 @@ MSE_ybarhat <- list()
 MSE_fhat <- list()
 
 #Number of simulations
-
-S <- 100
+S <- 500
 
 ini <- Sys.time()
 
-for(h in 1:S){ #Simulation
+for(h in 1:S){ #Starting simulation
 
 ##### Step 2 GENERATE CENSUS Y_p and compute true values of Y_hat and F_o
 
@@ -639,8 +641,8 @@ for(i in 1:nummod){
 
     Qfm_alpha0[i] <- Q + n*log(sigmae2est) + D*log(sigmau2est) #alpha0
     Qfm_alpha1[i] <- Qfm_alpha0[i] + 2*(ncol(Xs_s) + 2)
-    #rho <- ()
-    #Qfm_alpha2[[i]] <- Qfm[[i]] + 2*(rho + 2)
+    #rho 
+    #Qfm_alpha2[i] <- Qfm_alpha0[i] + 2*(rho + 2)
 
 }
 
@@ -657,12 +659,16 @@ for(i in 1:nummod){
                          popnsize = popsize, data = dat_s1_s)$eblup
 }
 
+eblup_l[[h]] <- eblup
+
 #EB
 
 for(i in 1:nummod){
-eb[[i]] <- ebBHF(formula = form_s_e_est[[i]], dom =  municipio_s, Xnonsample = data_mods_Non[[i]], constant = m,
+  eb[[i]] <- ebBHF(formula = form_s_e_est[[i]], dom =  municipio_s, Xnonsample = data_mods_Non[[i]], constant = m,
                  indicator = pov_inc)$eb
 }
+
+eb_l[[h]] <- eblup
 
 #Save GOF
 gofs <- list()
@@ -689,10 +695,12 @@ for(i in 1:nummod){
 }
 
 MSE_fhat[[h]] <- fo_hat_ls
-  
+print(paste("iteration:", h, sep = " "))
+
 } #End of simulation
 
-Sys.time() - ini #8.853463 mins 100 times
+tt_s <- Sys.time() - ini #8.853463 mins 500 times
+tt_s
 
 #Empirical GOF average, per model
 
@@ -706,16 +714,16 @@ for(i in 1:numgof){
   avg_gof[[i]] <- aux/S #Divide by the number of simulations
 }
 
-which.max(abs(avg_gof[[1]]))
-which.max(abs(avg_gof[[2]]))
-#which.max(abs(avg_gof[[3]]))
+which.min(avg_gof[[1]])
+which.min(avg_gof[[2]])
+#which.min(avg_gof[[3]])
 
 #The maximum averaged gof test, using the different penalties, is the model 5, as expected
 
 #Computing MSE of y_bar
 
 MSE_Y <- list()
-result_y <- matrix(0, ncol = 5, nrow = 57)
+result_y <- matrix(0, ncol = nummod, nrow = D)
 for(i in 1:nummod){
   aux <- 0
   for(j in 1:S){
@@ -729,7 +737,7 @@ colnames(result_y) <- c("Model 1", "Model 2", "Model 3", "Model 4", "Model 5")
 #Computing MSE of F_0
 
 MSE_F0 <- list()
-result_f0 <- matrix(0, ncol = 5, nrow = 57)
+result_f0 <- matrix(0, ncol = nummod, nrow = D)
 for(i in 1:nummod){
   aux <- 0
   for(j in 1:S){
@@ -750,8 +758,38 @@ boxplot(result_y)
 
 boxplot(result_f0)
 
+#Scatterplot of maximum MSE (Y_bar and f_0) against each GOFs
 
+#Log of income and poverty rate
 
+df_my <- matrix(0, ncol=2, nrow=5)
+df_mf0 <- matrix(0, ncol=2, nrow=5)
 
+for(i in 1:nummod){
+  df_my[i,1] <- which.max(result_y[,i])
+  df_my[i,2] <- result_y[df_my[i,1],i]
+  df_mf0[i,1] <- which.max(result_f0[,i])
+  df_mf0[i,2] <- result_f0[df_mf0[i,1],i]
+}
+
+colnames(df_my) <- c("index", "value")
+colnames(df_mf0) <- c("index", "value")
+df_my
+df_mf0
+
+#Alpha0
+
+plot(df_my[,2], avg_gof[[1]], main = "Maximum MSE of log-income against GOF alpha0")
+plot(df_mf0[,2], avg_gof[[1]], main = "Maximum MSE of poverty rate against GOF alpha0")
+
+#Alpha1
+
+plot(df_my[,2], avg_gof[[2]], main = "Maximum MSE of log-income against GOF alpha1")
+plot(df_mf0[,2], avg_gof[[2]], main = "Maximum MSE of poverty rate against GOF alpha1")
+
+#Alpha2
+
+#plot(df_my[,2], avg_gof[[3]], main = "Maximum MSE of log-income against GOF alpha2")
+#plot(df_mf0[,2], avg_gof[[3]], main = "Maximum MSE of poverty rate against GOF alpha2")
 
 
