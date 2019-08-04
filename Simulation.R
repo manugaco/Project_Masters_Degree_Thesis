@@ -301,7 +301,7 @@ MSE_ybarhat <- list()
 MSE_fhat <- list()
 
 #Number of simulations
-S <- 500
+S <- 200
 
 ini <- Sys.time()
 
@@ -631,18 +631,32 @@ for(i in 1:nummod){
     #compute gof (propsed loss function)
     
     Q <- 0
+    A <- 0
+    B <- 0
+    C <- 0
     for(j in 1:D){
       d <- muns_uni[j]
       Xd <- Xs_s[data_s1$municipio == d,,drop=FALSE] #Subset predictors for each municipality
       mean_d <- Xd%*%betaest_s
       Yd <- data_s1$Y[data_s1$municipio == d]
       Q <- Q + sum(((Yd - mean_d - upred_s[j])^2))/sigmae2est + sum(upred_s[j]^2)/sigmau2est
+      #Components of rho_tau
+      gamma_d <- sigmau2est_s/(sigmau2est_s + (sigmae2est_s/nd[j]))
+      x_bar <- (t(Xd)%*%rep(1,nrow(Xd)))
+      A <- A + t(Xd)%*%Xd - (nd[j]*gamma_d*(x_bar%*%t(x_bar)))
+      B <- B + t(Xd)%*%Xd - (2*nd[j]*(gamma_d-2)*(x_bar%*%t(x_bar)))
+      C <- C + nd[j]*gamma_d
+      
     }
-
+    
     Qfm_alpha0[i] <- Q + n*log(sigmae2est) + D*log(sigmau2est) #alpha0
     Qfm_alpha1[i] <- Qfm_alpha0[i] + 2*(ncol(Xs_s) + 2)
-    #rho 
-    #Qfm_alpha2[i] <- Qfm_alpha0[i] + 2*(rho + 2)
+    
+    A <- (1/sigmae2est_s)*A
+    B <- (1/sigmae2est_s)*B
+    rho_tau <- sum(diag((inv(A) %*% B))) + C
+    
+    Qfm_alpha2[i] <- Qfm_alpha0[i] + 2*(rho_tau + 2)
 
 }
 
@@ -716,7 +730,7 @@ for(i in 1:numgof){
 
 which.min(avg_gof[[1]])
 which.min(avg_gof[[2]])
-#which.min(avg_gof[[3]])
+which.min(avg_gof[[3]])
 
 #The maximum averaged gof test, using the different penalties, is the model 5, as expected
 
@@ -789,7 +803,7 @@ plot(df_mf0[,2], avg_gof[[2]], main = "Maximum MSE of poverty rate against GOF a
 
 #Alpha2
 
-#plot(df_my[,2], avg_gof[[3]], main = "Maximum MSE of log-income against GOF alpha2")
-#plot(df_mf0[,2], avg_gof[[3]], main = "Maximum MSE of poverty rate against GOF alpha2")
+plot(df_my[,2], avg_gof[[3]], main = "Maximum MSE of log-income against GOF alpha2")
+plot(df_mf0[,2], avg_gof[[3]], main = "Maximum MSE of poverty rate against GOF alpha2")
 
 
